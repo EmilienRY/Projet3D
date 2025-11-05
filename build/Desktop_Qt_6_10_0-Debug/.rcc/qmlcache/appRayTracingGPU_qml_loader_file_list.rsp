@@ -1,0 +1,5 @@
+--resource
+/home/emil/Bureau/RayTracingGPU/build/Desktop_Qt_6_10_0-Debug/.qt/rcc/qmake_RayTracingGPU.qrc
+--resource
+/home/emil/Bureau/RayTracingGPU/build/Desktop_Qt_6_10_0-Debug/.qt/rcc/appRayTracingGPU_raw_qml_0.qrc
+/qt/qml/RayTracingGPU/Main.qml

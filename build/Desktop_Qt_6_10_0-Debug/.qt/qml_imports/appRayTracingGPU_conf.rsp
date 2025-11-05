@@ -1,0 +1,14 @@
+-rootPath
+/home/emil/Bureau/RayTracingGPU
+-cmake-output
+-output-file
+/home/emil/Bureau/RayTracingGPU/build/Desktop_Qt_6_10_0-Debug/.qt/qml_imports/appRayTracingGPU_conf.cmake
+-importPath
+/home/emil/Bureau/RayTracingGPU/build/Desktop_Qt_6_10_0-Debug/RayTracingGPU
+-importPath
+/home/emil/Bureau/RayTracingGPU/build/Desktop_Qt_6_10_0-Debug
+-importPath
+/home/emil/Qt/6.10.0/gcc_64/qml
+-qrcFiles
+/home/emil/Bureau/RayTracingGPU/build/Desktop_Qt_6_10_0-Debug/.qt/rcc/qmake_RayTracingGPU.qrc
+/home/emil/Bureau/RayTracingGPU/build/Desktop_Qt_6_10_0-Debug/.qt/rcc/appRayTracingGPU_raw_qml_0.qrc

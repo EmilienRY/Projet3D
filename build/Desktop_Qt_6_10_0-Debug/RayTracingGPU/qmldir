@@ -1,0 +1,6 @@
+module RayTracingGPU
+typeinfo appRayTracingGPU.qmltypes
+prefer :/qt/qml/RayTracingGPU/
+Main 254.0 Main.qml
+depends QtQuick
+

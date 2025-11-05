@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/qt/qml/RayTracingGPU/">
+    <file alias="Main.qml">/home/emil/Bureau/RayTracingGPU/Main.qml</file>
+  </qresource>
+</RCC>
+
