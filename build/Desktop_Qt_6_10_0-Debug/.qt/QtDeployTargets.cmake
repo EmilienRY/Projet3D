@@ -1,2 +1,0 @@
-set(__QT_DEPLOY_TARGET_appRayTracingGPU_FILE /home/emil/Bureau/RayTracingGPU/build/Desktop_Qt_6_10_0-Debug/appRayTracingGPU)
-set(__QT_DEPLOY_TARGET_appRayTracingGPU_TYPE EXECUTABLE)
