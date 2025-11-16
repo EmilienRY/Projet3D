@@ -5,6 +5,7 @@
 #include <QMouseEvent>
 #include <QFile>
 #include <QDebug>
+#include <QMenu>
 
 // IMPORTANT: include the full Mesh definition since we use Mesh::Vertex, modelMatrix, new Mesh()
 #include "scene/mesh.h"
@@ -187,7 +188,7 @@ void OpenGLWindow::mousePressEvent(QMouseEvent *ev)
 {
     if (ev->button() == Qt::LeftButton && !m_fpsActive) {
         m_fpsActive = true;
-        m_lastMousePos = ev->localPos();
+        m_lastMousePos = ev->position();
         setCursor(Qt::BlankCursor);
         setKeyboardGrabEnabled(true);
         setMouseGrabEnabled(true);
@@ -200,12 +201,12 @@ void OpenGLWindow::mousePressEvent(QMouseEvent *ev)
 void OpenGLWindow::mouseMoveEvent(QMouseEvent *ev)
 {
     if (!m_fpsActive) {
-        m_lastMousePos = ev->localPos();
+        m_lastMousePos = ev->position();
         QOpenGLWindow::mouseMoveEvent(ev);
         return;
     }
 
-    QPointF cur = ev->localPos();
+    QPointF cur = ev->position();
     QPointF delta = cur - m_lastMousePos;
     m_lastMousePos = cur;
 
@@ -223,3 +224,83 @@ void OpenGLWindow::focusOutEvent(QFocusEvent *ev)
 
     QOpenGLWindow::focusOutEvent(ev);
 }
+
+void OpenGLWindow::loadOffFile(const QString &fileName,
+                               QVector<Mesh::Vertex> &verts,
+                               QVector<unsigned int> &idx)
+{
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Unable to open OFF file:" << fileName;
+    }
+
+    QTextStream in(&file);
+
+    // ----- HEADER -----
+    QString header;
+    in >> header;
+    if (header != "OFF") {
+        qWarning() << "Invalid OFF file:" << fileName;
+    }
+
+    int vertexCount = 0;
+    int faceCount = 0;
+    int edgeCount = 0;
+    in >> vertexCount >> faceCount >> edgeCount;
+
+    if (vertexCount <= 0 || faceCount <= 0) {
+        qWarning() << "Invalid mesh size";
+    }
+
+    verts.clear();
+    idx.clear();
+
+    verts.reserve(vertexCount);
+    idx.reserve(faceCount * 3);
+
+    // ----- DEFAULT COLOR -----
+    QVector3D defaultColor(1.0f, 1.0f, 1.0f);
+
+    // ----- READ VERTICES -----
+    std::vector<QVector3D> positions;
+    positions.reserve(vertexCount);
+
+    for (int i = 0; i < vertexCount; ++i) {
+        float x, y, z;
+        in >> x >> y >> z;
+        positions.emplace_back(x, y, z);
+    }
+
+    // Convert all positions into Mesh::Vertex
+    for (auto &p : positions)
+        verts.append({p, defaultColor});
+
+    // ----- READ FACES -----
+    for (int i = 0; i < faceCount; ++i) {
+        int n, a, b, c;
+        in >> n >> a >> b >> c;
+
+        if (n != 3) {
+            qWarning() << "Non triangular face encountered. Only triangles are supported!";
+        }
+
+        idx.append(static_cast<unsigned int>(a));
+        idx.append(static_cast<unsigned int>(b));
+        idx.append(static_cast<unsigned int>(c));
+    }
+}
+
+void OpenGLWindow::openOffMesh(const QVector<Mesh::Vertex> &verts,
+                               const QVector<unsigned int> &idx)
+{
+    Mesh* mesh = new Mesh();
+    mesh->initialize(verts, idx);
+    mesh->modelMatrix.setToIdentity();
+
+    m_scene->addMesh(mesh);
+
+}
+
+
+
+

@@ -1,19 +1,11 @@
-#include <QGuiApplication>
-#include <QSurfaceFormat>
-#include "renderer/openglwindow.h"
+#include <QApplication>
+#include "mainwindow.h"
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
 
-    QSurfaceFormat fmt;
-    fmt.setRenderableType(QSurfaceFormat::OpenGL);
-    fmt.setProfile(QSurfaceFormat::CoreProfile);
-    fmt.setVersion(4, 5);
-    QSurfaceFormat::setDefaultFormat(fmt);
-
-    OpenGLWindow window;
-    window.setTitle("Qt + OpenGL 4.5 - Cube + Camera FPS");
+    mainWindow window;
     window.resize(1280, 720);
     window.show();
 

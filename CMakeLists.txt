@@ -7,12 +7,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- Trouver Qt6 (Qt6.10)
 find_package(Qt6 REQUIRED COMPONENTS Gui OpenGLWidgets)
+find_package(Qt6 REQUIRED COMPONENTS Concurrent)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
 # --- Crée l’exécutable principal AVANT de définir les sources
 qt_add_executable(appRayTracingGPU
-    src/renderer/openglwindow.h)
+    src/renderer/openglwindow.h
+    src/mainwindow.h src/mainwindow.cpp)
 
 # --- Définir les fichiers source
 target_sources(appRayTracingGPU PRIVATE
@@ -33,6 +35,7 @@ target_include_directories(appRayTracingGPU PRIVATE
 # --- Lier Qt
 target_link_libraries(appRayTracingGPU
     PRIVATE Qt6::Gui Qt6::OpenGLWidgets
+    PRIVATE Qt6::Concurrent
 )
 
 # --- Installation (optionnelle)

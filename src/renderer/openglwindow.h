@@ -6,6 +6,9 @@
 #include <QOpenGLVertexArrayObject>
 #include <QElapsedTimer>
 #include <QSet>
+#include <QFileDialog>
+#include <QStatusBar>
+#include "scene/mesh.h"
 #include <memory>
 #include "renderer/camera.h"
 #include "scene/scene.h"
@@ -16,6 +19,11 @@ class OpenGLWindow : public QOpenGLWindow, protected QOpenGLFunctions_4_5_Core
 public:
     explicit OpenGLWindow(QWindow *parent = nullptr);
     ~OpenGLWindow();
+    void openOffMesh(const QVector<Mesh::Vertex> &verts,
+                     const QVector<unsigned int> &idx);
+    void loadOffFile(const QString &fileName,
+                     QVector<Mesh::Vertex> &verts,
+                     QVector<unsigned int> &idx);
 
 protected:
     // OpenGL
@@ -30,9 +38,12 @@ protected:
     void mouseMoveEvent(QMouseEvent *ev) override;
     void focusOutEvent(QFocusEvent *ev) override;
 
-private:
+private: 
+    QStatusBar * statusbar;
+
     void loadShaders();
     void buildScene();
+
     QVector3D inputDirection() const;
 
     QOpenGLShaderProgram *m_program { nullptr };
