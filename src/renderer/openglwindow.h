@@ -35,7 +35,7 @@ protected:
     void mousePressEvent(QMouseEvent *ev) override;
     void mouseMoveEvent(QMouseEvent *ev) override;
     void focusOutEvent(QFocusEvent *ev) override;
-
+    void resetAccumulation();
 private:
 
     void doRayTrace();
@@ -68,6 +68,13 @@ private:
     GLuint m_squaresSSBO = 0;
 
     GLuint m_quadVAO = 0;
+    GLuint m_accumTex = 0;
+    int m_accumFrame = 0;
+    int m_maxBounces = 4;
+
+    QVector3D m_lastCamPos;
+    QVector3D m_lastCamFront;
+    QVector3D m_lastCamUp;
 
     int m_gpuSphereCount = 0;
     int m_gpuLightCount = 0;

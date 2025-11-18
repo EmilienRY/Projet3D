@@ -1,4 +1,3 @@
-// src/renderer/openglwindow.cpp
 #include "openglwindow.h"
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -8,6 +7,7 @@
 #include "scene/mesh.h"
 #include "scene/scene.h"
 #include "gpu_stucts.h"
+
 OpenGLWindow::OpenGLWindow(QWindow *parent)
     : QOpenGLWindow(NoPartialUpdate, parent)
 {
@@ -61,6 +61,21 @@ void OpenGLWindow::initializeGL()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
+
+    glGenTextures(1, &m_accumTex);
+    glBindTexture(GL_TEXTURE_2D, m_accumTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, qMax(1, width()), qMax(1, height()), 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+
+    m_lastCamPos = m_camera.position();
+    m_lastCamFront = m_camera.front();
+    m_lastCamUp = m_camera.up();
+    m_accumFrame = 0;
+
+
     m_sceneIndex = 0;
     m_scene->buildPlaneSphere();
 
@@ -81,19 +96,42 @@ void OpenGLWindow::resizeGL(int w, int h)
     glBindTexture(GL_TEXTURE_2D, m_computeTex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, qMax(1,w), qMax(1,h), 0, GL_RGBA, GL_FLOAT, nullptr);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (m_accumTex) {
+        glBindTexture(GL_TEXTURE_2D, m_accumTex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, qMax(1,w), qMax(1,h), 0, GL_RGBA, GL_FLOAT, nullptr);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        m_accumFrame = 0;
+    }
+}
+
+void OpenGLWindow::resetAccumulation()
+{
+    m_accumFrame = 0;
+
+    if (m_accumTex) {
+        // reinitialise la texture à zeros
+        glBindTexture(GL_TEXTURE_2D, m_accumTex);
+        // fast reupload null -> contents become 0
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, qMax(1,width()), qMax(1,height()), 0, GL_RGBA, GL_FLOAT, nullptr);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 }
 
 
 void OpenGLWindow::uploadSceneToGPU()
 {
     std::vector<GpuSphere> spheres;
+    std::vector<GpuSquare> squares;
     std::vector<GpuLight>  lights;
-    std::vector<GpuSquare>  squares;
 
-    for (Mesh* mesh : m_scene->meshes()) {
-        if (mesh->isSphere) {
+    // --- SPHERES & QUADS ---
+    for (Mesh* mesh : m_scene->meshes())
+    {
+        if (mesh->isSphere)
+        {
             GpuSphere s;
-            auto pos = mesh->modelMatrix.map(QVector3D(0,0,0));
+            QVector3D pos = mesh->modelMatrix.map(QVector3D(0,0,0));
             s.cx = pos.x(); s.cy = pos.y(); s.cz = pos.z();
             s.radius = 1.0f;
 
@@ -101,12 +139,10 @@ void OpenGLWindow::uploadSceneToGPU()
             s.g = mesh->material().color.y();
             s.b = mesh->material().color.z();
             s.pad0 = 0.0f;
-            qDebug() << "Upload sphere center" << s.cx << s.cy << s.cz << " color " << s.r << s.g << s.b;
             spheres.push_back(s);
         }
-        else {
-            // --- SQUARE (quad) ---
-
+        else
+        {
             if (mesh->m_Vertices.size() < 4)
                 continue;
 
@@ -117,11 +153,10 @@ void OpenGLWindow::uploadSceneToGPU()
             QVector3D C = mesh->modelMatrix.map(mesh->m_Vertices[2].pos);
             QVector3D D = mesh->modelMatrix.map(mesh->m_Vertices[3].pos);
 
-
-            sq.ax = A.x(); sq.ay = A.y(); sq.az = A.z(); sq.pada = 0.0f;
-            sq.bx = B.x(); sq.by = B.y(); sq.bz = B.z(); sq.padb = 0.0f;
-            sq.cx = C.x(); sq.cy = C.y(); sq.cz = C.z(); sq.padc = 0.0f;
-            sq.dx = D.x(); sq.dy = D.y(); sq.dz = D.z(); sq.padd = 0.0f;
+            sq.ax = A.x(); sq.ay = A.y(); sq.az = A.z();
+            sq.bx = B.x(); sq.by = B.y(); sq.bz = B.z();
+            sq.cx = C.x(); sq.cy = C.y(); sq.cz = C.z();
+            sq.dx = D.x(); sq.dy = D.y(); sq.dz = D.z();
 
             sq.r = mesh->material().color.x();
             sq.g = mesh->material().color.y();
@@ -132,7 +167,9 @@ void OpenGLWindow::uploadSceneToGPU()
         }
     }
 
-    for (auto &l : m_scene->lights()) {
+    // --- LIGHTS ---
+    for (auto &l : m_scene->lights())
+    {
         GpuLight g;
         g.px = l.position.x();
         g.py = l.position.y();
@@ -146,38 +183,28 @@ void OpenGLWindow::uploadSceneToGPU()
         lights.push_back(g);
     }
 
-    m_gpuSphereCount = (int)spheres.size();
-    m_gpuLightCount  = (int)lights.size();
-    m_gpuSquareCount = (int)squares.size();
+    m_gpuSphereCount = spheres.size();
+    m_gpuSquareCount = squares.size();
+    m_gpuLightCount  = lights.size();
 
-    if (!m_ssboSpheres)
-        glGenBuffers(1, &m_ssboSpheres);
+    // Upload buffers
+    if (!m_ssboSpheres) glGenBuffers(1, &m_ssboSpheres);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboSpheres);
-    if (!spheres.empty())
-        glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(GpuSphere), spheres.data(), GL_DYNAMIC_DRAW);
-    else
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 1 * sizeof(GpuSphere), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuSphere)*spheres.size(),
+                 spheres.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_ssboSpheres);
 
-    if (!m_ssboLights)
-        glGenBuffers(1, &m_ssboLights);
+    if (!m_ssboLights) glGenBuffers(1, &m_ssboLights);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboLights);
-    if (!lights.empty())
-        glBufferData(GL_SHADER_STORAGE_BUFFER, lights.size() * sizeof(GpuLight), lights.data(), GL_DYNAMIC_DRAW);
-    else
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 1 * sizeof(GpuLight), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuLight)*lights.size(),
+                 lights.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_ssboLights);
 
-
-    if (!m_squaresSSBO)
-        glGenBuffers(1, &m_squaresSSBO);
+    if (!m_squaresSSBO) glGenBuffers(1, &m_squaresSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_squaresSSBO);
-    glBufferData(GL_SHADER_STORAGE_BUFFER,
-                 squares.size() * sizeof(GpuSquare),
-                 squares.data(),
-                 GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuSquare)*squares.size(),
+                 squares.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_squaresSSBO);
-
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
@@ -197,45 +224,46 @@ void OpenGLWindow::doRayTrace()
     }
     m_camera.processKeyboard(worldMove, dt);
 
-    uploadSceneToGPU();
-
-    GLint tw=0, th=0;
-    glBindTexture(GL_TEXTURE_2D, m_computeTex);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &tw);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &th);
+    if ( (m_camera.position() - m_lastCamPos).length() > 1e-4f ||
+        (m_camera.front() - m_lastCamFront).length() > 1e-4f ||
+        (m_camera.up() - m_lastCamUp).length() > 1e-4f )
+    {
+        resetAccumulation();
+        m_lastCamPos   = m_camera.position();
+        m_lastCamFront = m_camera.front();
+        m_lastCamUp    = m_camera.up();
+    }
 
     m_computeProgram->bind();
 
-    m_computeProgram->setUniformValue("u_sphereCount", m_gpuSphereCount);
-    m_computeProgram->setUniformValue("u_lightCount", m_gpuLightCount);
+    m_computeProgram->setUniformValue("u_sphereCount",  m_gpuSphereCount);
+    m_computeProgram->setUniformValue("u_lightCount",   m_gpuLightCount);
+    m_computeProgram->setUniformValue("u_squareCount",  m_gpuSquareCount);
 
     m_computeProgram->setUniformValue("u_camPos",   m_camera.position());
     m_computeProgram->setUniformValue("u_camFront", m_camera.front());
     m_computeProgram->setUniformValue("u_camRight", m_camera.right());
     m_computeProgram->setUniformValue("u_camUp",    m_camera.up());
+    m_computeProgram->setUniformValue("u_fovDeg",   60.0f);
 
-    m_computeProgram->setUniformValue("u_planeY", -0.5f);
-
-    m_computeProgram->setUniformValue("u_fovDeg", 60.0f);
-    m_computeProgram->setUniformValue("u_width", width());
+    m_computeProgram->setUniformValue("u_width",  width());
     m_computeProgram->setUniformValue("u_height", height());
-    m_computeProgram->setUniformValue("u_squareCount", m_gpuSquareCount);
+    m_computeProgram->setUniformValue("u_frameIndex", m_accumFrame);
 
-    glBindImageTexture(0, m_computeTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glBindImageTexture(0, m_accumTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
     int gx = (width()  + 15) / 16;
     int gy = (height() + 15) / 16;
     glDispatchCompute(gx, gy, 1);
 
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     m_computeProgram->release();
 
     glDisable(GL_DEPTH_TEST);
-
     m_screenProgram->bind();
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_computeTex);
+    glBindTexture(GL_TEXTURE_2D, m_accumTex);
     m_screenProgram->setUniformValue("tex", 0);
 
     glBindVertexArray(m_quadVAO);
@@ -243,6 +271,8 @@ void OpenGLWindow::doRayTrace()
     glBindVertexArray(0);
 
     m_screenProgram->release();
+
+    m_accumFrame = qMin(m_accumFrame + 1, 1000000);
     update();
 }
 
@@ -292,6 +322,7 @@ void OpenGLWindow::paintGL()
 {
     if(m_useRaytracing)
     {
+        uploadSceneToGPU();
         doRayTrace();
     }
     else
@@ -339,12 +370,17 @@ void OpenGLWindow::keyPressEvent(QKeyEvent *ev)
         return;
     }
 
+    if (ev->key() == Qt::Key_W || ev->key() == Qt::Key_Z || ev->key() == Qt::Key_S || ev->key() == Qt::Key_A || ev->key() == Qt::Key_D) {
+        resetAccumulation();
+    }
+
     if (ev->key() == Qt::Key_Plus || ev->text() == "+") {
         changeScene();
     }
 
     if (ev->key() == Qt::Key_R) {
         m_useRaytracing = !m_useRaytracing;
+        resetAccumulation();
         qDebug() << "Raytracing mode =" << m_useRaytracing;
     }
 
@@ -399,6 +435,7 @@ void OpenGLWindow::mouseMoveEvent(QMouseEvent *ev)
     m_lastMousePos = cur;
 
     m_camera.processMouseMovement(delta.x(), -delta.y());
+    resetAccumulation();
 }
 
 void OpenGLWindow::focusOutEvent(QFocusEvent *ev)

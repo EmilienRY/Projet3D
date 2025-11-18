@@ -1,17 +1,22 @@
 #version 430
 
-// compute workgroup
+// ---------------------------
+// THREAD GROUP
+// ---------------------------
 layout(local_size_x = 16, local_size_y = 16) in;
 
-// output image
-layout(rgba32f, binding = 0) writeonly uniform image2D imgOutput;
+// ---------------------------
+// ACCUMULATION IMAGE (lecture+écriture)
+// ---------------------------
 
-// -------------------------
-// types
-// -------------------------
+layout(rgba32f, binding = 0) coherent uniform image2D imgAccum;
+
+// ---------------------------
+// TYPES (identiques à ton code)
+// ---------------------------
 struct Sphere {
-    vec4 centerRadius; // xyz = center, w = radius
-    vec4 color;        // rgb = color, a = unused
+    vec4 centerRadius;
+    vec4 color;
 };
 
 struct Square {
@@ -22,31 +27,22 @@ struct Square {
     vec4 color;
 };
 
-
 struct Light {
-    vec4 posIntensity; // xyz = position, w = intensity
-    vec4 color;        // rgb = color, a = unused
+    vec4 posIntensity;
+    vec4 color;
 };
 
-// -------------------------
-// SSBOs
-// -------------------------
-layout(std430, binding = 1) buffer Spheres {
-    Sphere spheres[];
-};
+// ---------------------------
+// SSBO
+// ---------------------------
+layout(std430, binding = 1) buffer Spheres { Sphere spheres[]; };
+layout(std430, binding = 2) buffer Lights  { Light  lights[];  };
+layout(std430, binding = 3) buffer Squares { Square squares[]; };
 
-layout(std430, binding = 2) buffer Lights {
-    Light lights[];
-};
+// ---------------------------
+// UNIFORMS
+// ---------------------------
 
-layout(std430, binding = 3) buffer Squares {
-    Square squares[];
-};
-
-
-// -------------------------
-// uniforms
-// -------------------------
 layout(location = 0) uniform int u_sphereCount;
 layout(location = 1) uniform int u_lightCount;
 layout(location = 2) uniform vec3 u_camPos;
@@ -57,11 +53,52 @@ layout(location = 6) uniform float u_fovDeg;
 layout(location = 7) uniform int u_width;
 layout(location = 8) uniform int u_height;
 layout(location = 9) uniform int u_squareCount;
+layout(location = 10) uniform int u_frameIndex;
 
+// -------
+// RNG
+// -------
+uint hash_u(uint x)
+{
+    x ^= x >> 16;
+    x *= 0x7feb352du;
+    x ^= x >> 15;
+    x *= 0x846ca68bu;
+    x ^= x >> 16;
+    return x;
+}
 
-// -------------------------
-// helper structures / functions
-// -------------------------
+float randf(inout uint state)
+{
+    state = hash_u(state);
+    return float(state) / 4294967296.0;
+}
+
+// -----------------------
+// hemisphere sampling
+// -----------------------
+vec3 randomHemisphere(vec3 N, inout uint seed)
+{
+    float u = randf(seed);
+    float v = randf(seed);
+
+    float phi = 2.0 * 3.14159265358979323846 * u;
+    float cosTheta = v;
+    float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
+
+    vec3 T = normalize(abs(N.x) > 0.1 ? cross(N, vec3(0,1,0)) : cross(N, vec3(1,0,0)));
+    vec3 B = cross(N, T);
+
+    return normalize(
+        T * (cos(phi) * sinTheta) +
+        B * (sin(phi) * sinTheta) +
+        N * cosTheta
+    );
+}
+
+// -------------
+// HIT STRUCT
+// -------------
 struct Hit {
     float t;
     vec3 pos;
@@ -69,6 +106,9 @@ struct Hit {
     vec3 color;
 };
 
+// ---------------
+// INTERSECTIONS
+// ---------------
 bool intersectSphere(vec3 ro, vec3 rd, vec4 cR, out float t)
 {
     vec3 oc = ro - cR.xyz;
@@ -82,21 +122,9 @@ bool intersectSphere(vec3 ro, vec3 rd, vec4 cR, out float t)
     float t1 = -b - sq;
     float t2 = -b + sq;
 
-    // return nearest positive
     t = (t1 > 0.001) ? t1 : ((t2 > 0.001) ? t2 : -1.0);
     return t > 0.0;
 }
-
-bool intersectPlaneY0(vec3 ro, vec3 rd, out float t, out vec3 normal)
-{
-    // plane y= -0.5 (change si nécessaire) -> here plane at y=0
-    if (abs(rd.y) < 1e-6) return false;
-    t = -ro.y / rd.y;
-    if (t <= 0.001) return false;
-    normal = vec3(0.0, 1.0, 0.0);
-    return true;
-}
-
 
 bool intersectQuad(vec3 ro, vec3 rd, Square sq,
                    out float tHit, out vec3 normalOut, out vec3 colOut)
@@ -106,123 +134,131 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
     vec3 C = sq.c.xyz;
     vec3 D = sq.d.xyz;
 
-    // compute normal
     vec3 N = normalize(cross(B - A, D - A));
     float denom = dot(N, rd);
-
-    if (abs(denom) < 1e-6)
-        return false; // ray parallel
+    if (abs(denom) < 1e-6) return false;
 
     float t = dot(A - ro, N) / denom;
-    if (t <= 0.001)
-        return false;
+    if (t <= 0.001) return false;
 
     vec3 P = ro + rd * t;
 
-    // test inside ABC
     vec3 c1 = cross(B - A, P - A);
     vec3 c2 = cross(C - B, P - B);
     vec3 c3 = cross(A - C, P - C);
-    bool insideABC =
-        (dot(c1, N) >= 0.0 &&
-         dot(c2, N) >= 0.0 &&
-         dot(c3, N) >= 0.0);
 
-    if (insideABC) {
-        tHit = t;
-        normalOut = N;
-        colOut = sq.color.rgb;
-        return true;
+    if (dot(c1,N) >= 0.0 && dot(c2,N) >= 0.0 && dot(c3,N) >= 0.0) {
+        tHit = t; normalOut = N; colOut = sq.color.rgb; return true;
     }
 
-    // test inside ACD
     vec3 c4 = cross(C - A, P - A);
     vec3 c5 = cross(D - C, P - C);
     vec3 c6 = cross(A - D, P - D);
-    bool insideACD =
-        (dot(c4, N) >= 0.0 &&
-         dot(c5, N) >= 0.0 &&
-         dot(c6, N) >= 0.0);
 
-    if (insideACD) {
-        tHit = t;
-        normalOut = N;
-        colOut = sq.color.rgb;
-        return true;
+    if (dot(c4,N) >= 0.0 && dot(c5,N) >= 0.0 && dot(c6,N) >= 0.0) {
+        tHit = t; normalOut = N; colOut = sq.color.rgb; return true;
     }
 
     return false;
 }
 
-// -------------------------
-// main
-// -------------------------
+// ---------
+// TRACE
+// ---------
+bool trace(vec3 ro, vec3 rd, out Hit hit)
+{
+    hit.t = 1e30;
+    bool found = false;
+
+    for (int i = 0; i < u_sphereCount; ++i)
+    {
+        float t;
+        if (intersectSphere(ro, rd, spheres[i].centerRadius, t))
+        {
+            if (t < hit.t) {
+                hit.t = t;
+                hit.pos = ro + rd * t;
+                hit.normal = normalize(hit.pos - spheres[i].centerRadius.xyz);
+                hit.color = spheres[i].color.rgb;
+                found = true;
+            }
+        }
+    }
+
+    for (int i = 0; i < u_squareCount; ++i)
+    {
+        float t; vec3 n; vec3 c;
+        if (intersectQuad(ro, rd, squares[i], t, n, c))
+        {
+            if (t < hit.t) {
+                hit.t = t;
+                hit.pos = ro + rd * t;
+                hit.normal = n;
+                hit.color = c;
+                found = true;
+            }
+        }
+    }
+
+    return found;
+}
+
+// --------------------
+// MAIN PATH TRACER
+// --------------------
 void main()
 {
     ivec2 px = ivec2(gl_GlobalInvocationID.xy);
     if (px.x >= u_width || px.y >= u_height) return;
 
-    vec2 uv = (vec2(px) + vec2(0.5)) / vec2(u_width, u_height) * 2.0 - 1.0;
+    uint seed = uint(px.x) + uint(px.y) * 1664525u + uint(u_frameIndex) * 1013904223u;
+    seed = hash_u(seed);
+
+    float jx = randf(seed);
+    float jy = randf(seed);
+    vec2 uv = ((vec2(px) + vec2(jx, jy)) / vec2(u_width, u_height)) * 2.0 - 1.0;
 
     float fov = radians(u_fovDeg);
     float aspect = float(u_width) / float(u_height);
-    float tanHalf = tan(fov * 0.5);
+    float sx = uv.x * aspect * tan(fov*0.5);
+    float sy = uv.y * tan(fov*0.5);
 
-    float sx = uv.x * aspect * tanHalf;
-    float sy = uv.y * tanHalf;
-
-    vec3 rd = normalize(u_camRight * sx + u_camUp * sy + u_camFront);
     vec3 ro = u_camPos;
+    vec3 rd = normalize(u_camRight*sx + u_camUp*sy + u_camFront);
 
-    Hit hit;
-    hit.t = 1e30;
-    bool hitSomething = false;
+    vec3 throughput = vec3(1.0);
+    vec3 radiance = vec3(0.0);
 
-    // spheres
-    for (int i = 0; i < u_sphereCount; ++i) {
-        float t;
-        if (intersectSphere(ro, rd, spheres[i].centerRadius, t)) {
-            if (t > 0.0 && t < hit.t) {
-                hit.t = t;
-                hit.pos = ro + rd * t;
-                hit.normal = normalize(hit.pos - spheres[i].centerRadius.xyz);
-                hit.color = spheres[i].color.xyz;
-                hitSomething = true;
-            }
+    const int MAX_BOUNCES = 5;
+    for (int bounce = 0; bounce < MAX_BOUNCES; ++bounce)
+    {
+        Hit h;
+        if (!trace(ro, rd, h)) {
+            radiance += throughput * vec3(0.2, 0.3, 0.7);
+            break;
         }
-    }
 
-    for (int i = 0; i < u_squareCount; i++) {
-        float tq;
-        vec3 nq;
-        vec3 cq;
-
-        if (intersectQuad(ro, rd, squares[i], tq, nq, cq)) {
-            if (tq < hit.t) {
-                hit.t = tq;
-                hit.pos = ro + rd * tq;
-                hit.normal = nq;
-                hit.color = cq;
-                hitSomething = true;
-            }
+        for (int li = 0; li < u_lightCount; ++li) {
+            vec3 L = normalize(lights[li].posIntensity.xyz - h.pos);
+            float ndl = max(dot(h.normal, L), 0.0);
+            radiance += throughput * h.color * lights[li].color.rgb * ndl * lights[li].posIntensity.w;
         }
-    }
 
-    vec3 outCol = vec3(0.2, 0.3, 0.5); // background
+        throughput *= h.color;
 
-    if (hitSomething) {
-        // simple lambertian with all lights (no shadows)
-        outCol = vec3(0.0);
-        for (int i = 0; i < u_lightCount; ++i) {
-            vec3 L = normalize(lights[i].posIntensity.xyz - hit.pos);
-            float ndl = max(dot(hit.normal, L), 0.0);
-            float intensity = lights[i].posIntensity.w;
-            vec3 lightColor = lights[i].color.xyz;
-            outCol += hit.color * lightColor * ndl * intensity;
+        if (bounce > 2) {
+            float p = clamp(max(max(throughput.r, throughput.g), throughput.b), 0.01, 0.99);
+            if (randf(seed) > p) break;
+            throughput /= p;
         }
-        // small ambient
-        outCol += hit.color * 0.05;
-    }
 
-    imageStore(imgOutput, px, vec4(outCol, 1.0));
+        ro = h.pos + h.normal * 1e-4;
+        rd = randomHemisphere(h.normal, seed);
+    }
+    vec4 old = imageLoad(imgAccum, px);
+    float frameF = float(max(u_frameIndex, 0));
+
+    vec3 blended = (old.rgb * frameF + radiance) / (frameF + 1.0);
+
+    imageStore(imgAccum, px, vec4(blended, 1.0));
 }
