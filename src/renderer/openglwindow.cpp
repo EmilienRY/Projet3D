@@ -43,12 +43,14 @@ void OpenGLWindow::changeScene()
 
 void OpenGLWindow::initializeGL()
 {
+
     initializeOpenGLFunctions();
     qDebug() << "OpenGL Version:" << (const char*)glGetString(GL_VERSION);
     qDebug() << "GLSL Version:"  << (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+    glDisable(GL_CULL_FACE);
 
     glGenVertexArrays(1, &m_quadVAO);
     glBindVertexArray(m_quadVAO);
@@ -74,7 +76,6 @@ void OpenGLWindow::initializeGL()
     m_lastCamFront = m_camera.front();
     m_lastCamUp = m_camera.up();
     m_accumFrame = 0;
-
 
     m_sceneIndex = 0;
     m_scene->buildPlaneSphere();
@@ -110,9 +111,7 @@ void OpenGLWindow::resetAccumulation()
     m_accumFrame = 0;
 
     if (m_accumTex) {
-        // reinitialise la texture à zeros
         glBindTexture(GL_TEXTURE_2D, m_accumTex);
-        // fast reupload null -> contents become 0
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, qMax(1,width()), qMax(1,height()), 0, GL_RGBA, GL_FLOAT, nullptr);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
@@ -125,7 +124,6 @@ void OpenGLWindow::uploadSceneToGPU()
     std::vector<GpuSquare> squares;
     std::vector<GpuLight>  lights;
 
-    // --- SPHERES & QUADS ---
     for (Mesh* mesh : m_scene->meshes())
     {
         if (mesh->isSphere)
@@ -152,9 +150,6 @@ void OpenGLWindow::uploadSceneToGPU()
         }
         else
         {
-            if (mesh->m_Vertices.size() < 4)
-                continue;
-
             GpuSquare sq;
 
             QVector3D A = mesh->modelMatrix.map(mesh->m_Vertices[0].pos);
