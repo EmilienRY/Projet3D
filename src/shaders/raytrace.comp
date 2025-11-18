@@ -1,0 +1,157 @@
+#version 430
+
+// compute workgroup
+layout(local_size_x = 16, local_size_y = 16) in;
+
+// output image
+layout(rgba32f, binding = 0) writeonly uniform image2D imgOutput;
+
+// -------------------------
+// types (définis AVANT les blocks)
+// -------------------------
+struct Sphere {
+    vec4 centerRadius; // xyz = center, w = radius
+    vec4 color;        // rgb = color, a = unused
+};
+
+struct Light {
+    vec4 posIntensity; // xyz = position, w = intensity
+    vec4 color;        // rgb = color, a = unused
+};
+
+// -------------------------
+// SSBOs (simple, références aux types définis au-dessus)
+// -------------------------
+layout(std430, binding = 1) buffer Spheres {
+    Sphere spheres[];
+};
+
+layout(std430, binding = 2) buffer Lights {
+    Light lights[];
+};
+
+// -------------------------
+// uniforms
+// -------------------------
+layout(location = 0) uniform int u_sphereCount;
+layout(location = 1) uniform int u_lightCount;
+layout(location = 2) uniform vec3 u_camPos;
+layout(location = 3) uniform vec3 u_camFront;
+layout(location = 4) uniform vec3 u_camRight;
+layout(location = 5) uniform vec3 u_camUp;
+layout(location = 6) uniform float u_fovDeg;
+layout(location = 7) uniform int u_width;
+layout(location = 8) uniform int u_height;
+
+
+
+
+
+// -------------------------
+// helper structures / functions
+// -------------------------
+struct Hit {
+    float t;
+    vec3 pos;
+    vec3 normal;
+    vec3 color;
+};
+
+bool intersectSphere(vec3 ro, vec3 rd, vec4 cR, out float t)
+{
+    vec3 oc = ro - cR.xyz;
+    float r = cR.w;
+    float b = dot(oc, rd);
+    float c = dot(oc, oc) - r*r;
+    float disc = b*b - c;
+    if (disc < 0.0) return false;
+
+    float sq = sqrt(disc);
+    float t1 = -b - sq;
+    float t2 = -b + sq;
+
+    // return nearest positive
+    t = (t1 > 0.001) ? t1 : ((t2 > 0.001) ? t2 : -1.0);
+    return t > 0.0;
+}
+
+bool intersectPlaneY0(vec3 ro, vec3 rd, out float t, out vec3 normal)
+{
+    // plane y= -0.5 (change si nécessaire) -> here plane at y=0
+    if (abs(rd.y) < 1e-6) return false;
+    t = -ro.y / rd.y;
+    if (t <= 0.001) return false;
+    normal = vec3(0.0, 1.0, 0.0);
+    return true;
+}
+
+// -------------------------
+// main
+// -------------------------
+void main()
+{
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+    if (px.x >= u_width || px.y >= u_height) return;
+
+    vec2 uv = (vec2(px) + vec2(0.5)) / vec2(u_width, u_height) * 2.0 - 1.0;
+    uv.y *= -1.0;
+
+    float fov = radians(u_fovDeg);
+    float aspect = float(u_width) / float(u_height);
+    float tanHalf = tan(fov * 0.5);
+
+    float sx = uv.x * aspect * tanHalf;
+    float sy = uv.y * tanHalf;
+
+    vec3 rd = normalize(u_camRight * sx + u_camUp * sy + u_camFront);
+    vec3 ro = u_camPos;
+
+    Hit hit;
+    hit.t = 1e30;
+    bool hitSomething = false;
+
+
+    // spheres
+    for (int i = 0; i < u_sphereCount; ++i) {
+        float t;
+        if (intersectSphere(ro, rd, spheres[i].centerRadius, t)) {
+            if (t > 0.0 && t < hit.t) {
+                hit.t = t;
+                hit.pos = ro + rd * t;
+                hit.normal = normalize(hit.pos - spheres[i].centerRadius.xyz);
+                hit.color = spheres[i].color.xyz;
+                hitSomething = true;
+            }
+        }
+    }
+
+    // plane y = 0
+    float tPlane; vec3 nPlane;
+    if (intersectPlaneY0(ro, rd, tPlane, nPlane)) {
+        if (tPlane > 0.0 && tPlane < hit.t) {
+            hit.t = tPlane;
+            hit.pos = ro + rd * tPlane;
+            hit.normal = nPlane;
+            hit.color = vec3(0.7); // floor color
+            hitSomething = true;
+        }
+    }
+
+    vec3 outCol = vec3(0.2, 0.3, 0.5); // background
+
+    if (hitSomething) {
+        // simple lambertian with all lights (no shadows)
+        outCol = vec3(0.0);
+        for (int i = 0; i < u_lightCount; ++i) {
+            vec3 L = normalize(lights[i].posIntensity.xyz - hit.pos);
+            float ndl = max(dot(hit.normal, L), 0.0);
+            float intensity = lights[i].posIntensity.w;
+            vec3 lightColor = lights[i].color.xyz;
+            outCol += hit.color * lightColor * ndl * intensity;
+        }
+        // small ambient
+        outCol += hit.color * 0.05;
+    }
+
+    imageStore(imgOutput, px, vec4(outCol, 1.0));
+}

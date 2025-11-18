@@ -14,7 +14,11 @@ qt_standard_project_setup(REQUIRES 6.8)
 # --- Crée l’exécutable principal AVANT de définir les sources
 qt_add_executable(appRayTracingGPU
     src/renderer/openglwindow.h
-    src/mainwindow.h src/mainwindow.cpp)
+    src/mainwindow.h src/mainwindow.cpp
+    src/shaders/raytrace.comp
+    src/renderer/gpu_stucts.h
+    src/shaders/screen.frag
+    src/shaders/screen.vert)
 
 # --- Définir les fichiers source
 target_sources(appRayTracingGPU PRIVATE

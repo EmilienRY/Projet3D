@@ -67,8 +67,6 @@ void generateSphereMesh(float radius,
     }
 }
 
-
-
 void Scene::buildPlaneSphere()
 {
     QVector<Mesh::Vertex> verts;
@@ -85,10 +83,10 @@ void Scene::buildPlaneSphere()
     };
 
     pushQuad(
-        {-3,-0.5,-3},
-        {-3,-0.5,3},
-        {3,-0.5,3},
-        {3,-0.5,-3},
+        {-3,0.,-3},
+        {-3,0.,3},
+        {3,0.,3},
+        {3,0.,-3},
         {0.7f, 0.7f, 0.7f}
     );
 
@@ -106,20 +104,21 @@ void Scene::buildPlaneSphere()
     generateSphereMesh(1.0f, 20, 20, sVerts, sIdx);
 
     Material m2;
-    m1.color=QVector3D(0,0,1);
+    m2.color=QVector3D(0,0,1);
 
     Mesh* sphere = new Mesh();
     sphere->addMaterial(m2);
     sphere->initialize(sVerts, sIdx);
     sphere->modelMatrix.translate(0, 1, 0);
-
+    sphere->isSphere=true;
     addMesh(sphere);
 
     Light l;
-    l.position=QVector3D(0,1,0);
-    l.color=QVector3D(1,1,1);
-    l.intensity=1.;
+    l.position = QVector3D(2.0f, 4.0f, 2.0f);
+    l.color    = QVector3D(1.0f, 1.0f, 1.0f);
+    l.intensity= 3.2f;
     m_lights.append(l);
+
 }
 
 void Scene::buildCornellBox()

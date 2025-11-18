@@ -18,10 +18,11 @@ public:
 
     void initialize(const QVector<Vertex>& vertices, const QVector<unsigned int>& indices);
     void render();
-
+    Material material(){return m_material;}
     QMatrix4x4 modelMatrix;
 
     void addMaterial(const Material& m);
+    bool isSphere=false;
 private:
     QOpenGLBuffer m_vbo;
     QOpenGLBuffer m_ibo;

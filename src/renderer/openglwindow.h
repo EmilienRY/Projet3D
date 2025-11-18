@@ -9,7 +9,6 @@
 #include <QFileDialog>
 #include <QStatusBar>
 #include "scene/mesh.h"
-#include <memory>
 #include "renderer/camera.h"
 #include "scene/scene.h"
 
@@ -37,13 +36,18 @@ protected:
     void mouseMoveEvent(QMouseEvent *ev) override;
     void focusOutEvent(QFocusEvent *ev) override;
 
-private: 
+private:
+
+    void doRayTrace();
+    void doRaster();
+
     QStatusBar * statusbar;
+    bool m_useRaytracing = false;
 
     void loadShaders();
 
     QVector3D inputDirection() const;
-
+    void uploadSceneToGPU();
     QOpenGLShaderProgram *m_program { nullptr };
     Scene *m_scene { nullptr };
     Camera m_camera;
@@ -54,4 +58,20 @@ private:
 
     bool m_fpsActive { false };
     QPointF m_lastMousePos;
+
+    GLuint m_computeTex = 0;
+    QOpenGLShaderProgram* m_computeProgram = nullptr;
+    QOpenGLShaderProgram* m_screenProgram  = nullptr;
+
+    GLuint m_ssboSpheres = 0;
+    GLuint m_ssboLights  = 0;
+
+    GLuint m_quadVAO = 0;
+
+    int m_gpuSphereCount = 0;
+    int m_gpuLightCount = 0;
+
+
+
+
 };

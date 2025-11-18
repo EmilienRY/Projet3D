@@ -14,6 +14,8 @@ public:
     void addMesh(Mesh* m);
     void clear();
     const QVector<Mesh*>& meshes() const { return m_meshes; }
+    const QVector<Light>& lights() const { return m_lights; }
+
     void buildPlaneSphere();
     void buildCornellBox();
 
