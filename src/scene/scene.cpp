@@ -118,7 +118,6 @@ void Scene::buildPlaneSphere()
     l.color    = QVector3D(1.0f, 1.0f, 1.0f);
     l.intensity= 3.2f;
     m_lights.append(l);
-
 }
 
 void Scene::buildCornellBox()

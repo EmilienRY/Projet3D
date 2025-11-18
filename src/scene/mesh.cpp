@@ -23,6 +23,9 @@ void Mesh::addMaterial(const Material& m)
 
 void Mesh::initialize(const QVector<Vertex> &vertices, const QVector<unsigned int> &indices)
 {
+
+    m_Vertices = vertices;
+    m_Indices = indices;
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
 
     m_vao.create();

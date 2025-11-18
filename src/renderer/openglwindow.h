@@ -65,11 +65,13 @@ private:
 
     GLuint m_ssboSpheres = 0;
     GLuint m_ssboLights  = 0;
+    GLuint m_squaresSSBO = 0;
 
     GLuint m_quadVAO = 0;
 
     int m_gpuSphereCount = 0;
     int m_gpuLightCount = 0;
+    int m_gpuSquareCount = 0;
 
 
 

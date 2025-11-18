@@ -7,12 +7,21 @@ layout(local_size_x = 16, local_size_y = 16) in;
 layout(rgba32f, binding = 0) writeonly uniform image2D imgOutput;
 
 // -------------------------
-// types (définis AVANT les blocks)
+// types
 // -------------------------
 struct Sphere {
     vec4 centerRadius; // xyz = center, w = radius
     vec4 color;        // rgb = color, a = unused
 };
+
+struct Square {
+    vec4 a;
+    vec4 b;
+    vec4 c;
+    vec4 d;
+    vec4 color;
+};
+
 
 struct Light {
     vec4 posIntensity; // xyz = position, w = intensity
@@ -20,7 +29,7 @@ struct Light {
 };
 
 // -------------------------
-// SSBOs (simple, références aux types définis au-dessus)
+// SSBOs
 // -------------------------
 layout(std430, binding = 1) buffer Spheres {
     Sphere spheres[];
@@ -29,6 +38,11 @@ layout(std430, binding = 1) buffer Spheres {
 layout(std430, binding = 2) buffer Lights {
     Light lights[];
 };
+
+layout(std430, binding = 3) buffer Squares {
+    Square squares[];
+};
+
 
 // -------------------------
 // uniforms
@@ -42,9 +56,7 @@ layout(location = 5) uniform vec3 u_camUp;
 layout(location = 6) uniform float u_fovDeg;
 layout(location = 7) uniform int u_width;
 layout(location = 8) uniform int u_height;
-
-
-
+layout(location = 9) uniform int u_squareCount;
 
 
 // -------------------------
@@ -85,6 +97,63 @@ bool intersectPlaneY0(vec3 ro, vec3 rd, out float t, out vec3 normal)
     return true;
 }
 
+
+bool intersectQuad(vec3 ro, vec3 rd, Square sq,
+                   out float tHit, out vec3 normalOut, out vec3 colOut)
+{
+    vec3 A = sq.a.xyz;
+    vec3 B = sq.b.xyz;
+    vec3 C = sq.c.xyz;
+    vec3 D = sq.d.xyz;
+
+    // compute normal
+    vec3 N = normalize(cross(B - A, D - A));
+    float denom = dot(N, rd);
+
+    if (abs(denom) < 1e-6)
+        return false; // ray parallel
+
+    float t = dot(A - ro, N) / denom;
+    if (t <= 0.001)
+        return false;
+
+    vec3 P = ro + rd * t;
+
+    // test inside ABC
+    vec3 c1 = cross(B - A, P - A);
+    vec3 c2 = cross(C - B, P - B);
+    vec3 c3 = cross(A - C, P - C);
+    bool insideABC =
+        (dot(c1, N) >= 0.0 &&
+         dot(c2, N) >= 0.0 &&
+         dot(c3, N) >= 0.0);
+
+    if (insideABC) {
+        tHit = t;
+        normalOut = N;
+        colOut = sq.color.rgb;
+        return true;
+    }
+
+    // test inside ACD
+    vec3 c4 = cross(C - A, P - A);
+    vec3 c5 = cross(D - C, P - C);
+    vec3 c6 = cross(A - D, P - D);
+    bool insideACD =
+        (dot(c4, N) >= 0.0 &&
+         dot(c5, N) >= 0.0 &&
+         dot(c6, N) >= 0.0);
+
+    if (insideACD) {
+        tHit = t;
+        normalOut = N;
+        colOut = sq.color.rgb;
+        return true;
+    }
+
+    return false;
+}
+
 // -------------------------
 // main
 // -------------------------
@@ -94,7 +163,6 @@ void main()
     if (px.x >= u_width || px.y >= u_height) return;
 
     vec2 uv = (vec2(px) + vec2(0.5)) / vec2(u_width, u_height) * 2.0 - 1.0;
-    uv.y *= -1.0;
 
     float fov = radians(u_fovDeg);
     float aspect = float(u_width) / float(u_height);
@@ -110,7 +178,6 @@ void main()
     hit.t = 1e30;
     bool hitSomething = false;
 
-
     // spheres
     for (int i = 0; i < u_sphereCount; ++i) {
         float t;
@@ -125,15 +192,19 @@ void main()
         }
     }
 
-    // plane y = 0
-    float tPlane; vec3 nPlane;
-    if (intersectPlaneY0(ro, rd, tPlane, nPlane)) {
-        if (tPlane > 0.0 && tPlane < hit.t) {
-            hit.t = tPlane;
-            hit.pos = ro + rd * tPlane;
-            hit.normal = nPlane;
-            hit.color = vec3(0.7); // floor color
-            hitSomething = true;
+    for (int i = 0; i < u_squareCount; i++) {
+        float tq;
+        vec3 nq;
+        vec3 cq;
+
+        if (intersectQuad(ro, rd, squares[i], tq, nq, cq)) {
+            if (tq < hit.t) {
+                hit.t = tq;
+                hit.pos = ro + rd * tq;
+                hit.normal = nq;
+                hit.color = cq;
+                hitSomething = true;
+            }
         }
     }
 

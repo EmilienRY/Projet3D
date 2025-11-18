@@ -23,6 +23,10 @@ public:
 
     void addMaterial(const Material& m);
     bool isSphere=false;
+
+    QVector<Vertex> m_Vertices;
+    QVector<unsigned int> m_Indices;
+
 private:
     QOpenGLBuffer m_vbo;
     QOpenGLBuffer m_ibo;

@@ -88,6 +88,7 @@ void OpenGLWindow::uploadSceneToGPU()
 {
     std::vector<GpuSphere> spheres;
     std::vector<GpuLight>  lights;
+    std::vector<GpuSquare>  squares;
 
     for (Mesh* mesh : m_scene->meshes()) {
         if (mesh->isSphere) {
@@ -102,6 +103,32 @@ void OpenGLWindow::uploadSceneToGPU()
             s.pad0 = 0.0f;
             qDebug() << "Upload sphere center" << s.cx << s.cy << s.cz << " color " << s.r << s.g << s.b;
             spheres.push_back(s);
+        }
+        else {
+            // --- SQUARE (quad) ---
+
+            if (mesh->m_Vertices.size() < 4)
+                continue;
+
+            GpuSquare sq;
+
+            QVector3D A = mesh->modelMatrix.map(mesh->m_Vertices[0].pos);
+            QVector3D B = mesh->modelMatrix.map(mesh->m_Vertices[1].pos);
+            QVector3D C = mesh->modelMatrix.map(mesh->m_Vertices[2].pos);
+            QVector3D D = mesh->modelMatrix.map(mesh->m_Vertices[3].pos);
+
+
+            sq.ax = A.x(); sq.ay = A.y(); sq.az = A.z(); sq.pada = 0.0f;
+            sq.bx = B.x(); sq.by = B.y(); sq.bz = B.z(); sq.padb = 0.0f;
+            sq.cx = C.x(); sq.cy = C.y(); sq.cz = C.z(); sq.padc = 0.0f;
+            sq.dx = D.x(); sq.dy = D.y(); sq.dz = D.z(); sq.padd = 0.0f;
+
+            sq.r = mesh->material().color.x();
+            sq.g = mesh->material().color.y();
+            sq.b = mesh->material().color.z();
+            sq.pad0 = 0.0f;
+
+            squares.push_back(sq);
         }
     }
 
@@ -121,6 +148,7 @@ void OpenGLWindow::uploadSceneToGPU()
 
     m_gpuSphereCount = (int)spheres.size();
     m_gpuLightCount  = (int)lights.size();
+    m_gpuSquareCount = (int)squares.size();
 
     if (!m_ssboSpheres)
         glGenBuffers(1, &m_ssboSpheres);
@@ -128,7 +156,7 @@ void OpenGLWindow::uploadSceneToGPU()
     if (!spheres.empty())
         glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(GpuSphere), spheres.data(), GL_DYNAMIC_DRAW);
     else
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 1 * sizeof(GpuSphere), nullptr, GL_DYNAMIC_DRAW); // avoid bind error
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 1 * sizeof(GpuSphere), nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_ssboSpheres);
 
     if (!m_ssboLights)
@@ -140,11 +168,19 @@ void OpenGLWindow::uploadSceneToGPU()
         glBufferData(GL_SHADER_STORAGE_BUFFER, 1 * sizeof(GpuLight), nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_ssboLights);
 
+
+    if (!m_squaresSSBO)
+        glGenBuffers(1, &m_squaresSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_squaresSSBO);
+    glBufferData(GL_SHADER_STORAGE_BUFFER,
+                 squares.size() * sizeof(GpuSquare),
+                 squares.data(),
+                 GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_squaresSSBO);
+
+
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
-
-
-
 
 void OpenGLWindow::doRayTrace()
 {
@@ -160,7 +196,6 @@ void OpenGLWindow::doRayTrace()
         worldMove = forward * dir.z() + right * dir.x();
     }
     m_camera.processKeyboard(worldMove, dt);
-
 
     uploadSceneToGPU();
 
@@ -184,6 +219,7 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->setUniformValue("u_fovDeg", 60.0f);
     m_computeProgram->setUniformValue("u_width", width());
     m_computeProgram->setUniformValue("u_height", height());
+    m_computeProgram->setUniformValue("u_squareCount", m_gpuSquareCount);
 
     glBindImageTexture(0, m_computeTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
@@ -281,7 +317,6 @@ void OpenGLWindow::loadShaders()
         qWarning() << "Screen frag compile error:" << m_screenProgram->log();
     if (!m_screenProgram->link())
         qWarning() << "Screen program link error:" << m_screenProgram->log();
-
 
     m_program = new QOpenGLShaderProgram();
     bool ok = m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "src/shaders/basic.vert");
