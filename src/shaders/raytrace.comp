@@ -240,8 +240,11 @@ void main()
 
         for (int li = 0; li < u_lightCount; ++li) {
             vec3 L = normalize(lights[li].posIntensity.xyz - h.pos);
-            float ndl = max(dot(h.normal, L), 0.0);
-            radiance += throughput * h.color * lights[li].color.rgb * ndl * lights[li].posIntensity.w;
+            Hit hitLight;
+            if (!trace(h.pos,L,hitLight) ){
+                float ndl = max(dot(h.normal, L), 0.0);
+                radiance += throughput * h.color * lights[li].color.rgb * ndl * lights[li].posIntensity.w;
+            }
         }
 
         throughput *= h.color;
