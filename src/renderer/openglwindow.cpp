@@ -135,10 +135,19 @@ void OpenGLWindow::uploadSceneToGPU()
             s.cx = pos.x(); s.cy = pos.y(); s.cz = pos.z();
             s.radius = 1.0f;
 
-            s.r = mesh->material().color.x();
-            s.g = mesh->material().color.y();
-            s.b = mesh->material().color.z();
-            s.pad0 = 0.0f;
+            s.diffuseR = mesh->material().color.x();
+            s.diffuseG = mesh->material().color.y();
+            s.diffuseB = mesh->material().color.z();
+            s.kd = mesh->material().kd;
+            s.ks = mesh->material().ks;
+            s.specularR = mesh->material().specularColor.x();
+            s.specularG = mesh->material().specularColor.y();
+            s.specularB = mesh->material().specularColor.z();
+            s.shininess=mesh->material().shininess;
+
+            s.pad1=0.0f;
+            s.pad2=0.0f;
+            s.pad3=0.0f;
             spheres.push_back(s);
         }
         else
@@ -153,15 +162,20 @@ void OpenGLWindow::uploadSceneToGPU()
             QVector3D C = mesh->modelMatrix.map(mesh->m_Vertices[2].pos);
             QVector3D D = mesh->modelMatrix.map(mesh->m_Vertices[3].pos);
 
-            sq.ax = A.x(); sq.ay = A.y(); sq.az = A.z();
-            sq.bx = B.x(); sq.by = B.y(); sq.bz = B.z();
-            sq.cx = C.x(); sq.cy = C.y(); sq.cz = C.z();
-            sq.dx = D.x(); sq.dy = D.y(); sq.dz = D.z();
+            sq.ax = A.x(); sq.ay = A.y(); sq.az = A.z(); sq.padA=0.0f;
+            sq.bx = B.x(); sq.by = B.y(); sq.bz = B.z(); sq.padB=0.0f;
+            sq.cx = C.x(); sq.cy = C.y(); sq.cz = C.z(); sq.padC=0.0f;
+            sq.dx = D.x(); sq.dy = D.y(); sq.dz = D.z(); sq.padD=0.0f;
 
-            sq.r = mesh->material().color.x();
-            sq.g = mesh->material().color.y();
-            sq.b = mesh->material().color.z();
-            sq.pad0 = 0.0f;
+            sq.diffuseR = mesh->material().color.x();
+            sq.diffuseG = mesh->material().color.y();
+            sq.diffuseB = mesh->material().color.z();
+            sq.kd = mesh->material().kd;
+            sq.ks = mesh->material().ks;
+            sq.specularR = mesh->material().specularColor.x();
+            sq.specularG = mesh->material().specularColor.y();
+            sq.specularB = mesh->material().specularColor.z();
+            sq.shininess=mesh->material().shininess;
 
             squares.push_back(sq);
         }

@@ -88,10 +88,15 @@ void Scene::buildPlaneSphere()
         {3,0.,3},
         {3,0.,-3},
         {0.7f, 0.7f, 0.7f}
-    );
+        );
 
     Material m1;
     m1.color=QVector3D(0,1,0);
+
+    m1.kd = 1.;
+    m1.ks = 0.3;
+    m1.specularColor = QVector3D(1,1,1);
+    m1.shininess = 32;
 
     Mesh* plane = new Mesh();
     plane->addMaterial(m1);
@@ -104,7 +109,13 @@ void Scene::buildPlaneSphere()
     generateSphereMesh(1.0f, 20, 20, sVerts, sIdx);
 
     Material m2;
-    m2.color=QVector3D(0,0,1);
+    m2.color=QVector3D(1.0, 0., 0.);;
+    m2.kd = 0.5;
+    m2.ks = 0.6;
+    //m2.specularColor = m2.color;
+    m2.specularColor = QVector3D(1.0,1.0,1.0);
+    m2.shininess = 128;
+
 
     Mesh* sphere = new Mesh();
     sphere->addMaterial(m2);
@@ -115,7 +126,7 @@ void Scene::buildPlaneSphere()
 
     Light l;
     l.position = QVector3D(2.0f, 4.0f, 2.0f);
-    l.color    = QVector3D(1.0f, 1.0f, 1.0f);
+    l.color    = QVector3D(1.0f, 1.f, 1.f);
     l.intensity= 3.2f;
     m_lights.append(l);
 }
@@ -172,5 +183,4 @@ void Scene::buildCornellBox()
     l.intensity=1.;
 
     m_lights.append(l);
-
 }

@@ -2,7 +2,9 @@
 #include <QVector3D>
 struct Material
 {
-
     QVector3D color;
-    // placeholder for future: textures, colors, roughness, metallic, ...
+    QVector3D specularColor;
+    float shininess;
+    float kd;
+    float ks;
 };
