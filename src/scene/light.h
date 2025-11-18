@@ -1,6 +1,9 @@
 #pragma once
+#include <QVector3D>
 
 struct Light
 {
-    // placeholder for future: type, color, intensity...
+    QVector3D position;
+    QVector3D color;
+    float intensity;
 };

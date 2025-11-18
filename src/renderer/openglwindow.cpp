@@ -1,13 +1,10 @@
 // src/renderer/openglwindow.cpp
 #include "openglwindow.h"
-
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QFile>
 #include <QDebug>
 #include <QMenu>
-
-// IMPORTANT: include the full Mesh definition since we use Mesh::Vertex, modelMatrix, new Mesh()
 #include "scene/mesh.h"
 #include "scene/scene.h"
 
@@ -25,6 +22,25 @@ OpenGLWindow::~OpenGLWindow()
     doneCurrent();
 }
 
+void OpenGLWindow::changeScene()
+{
+    m_sceneIndex = (m_sceneIndex + 1) % 2;
+
+    makeCurrent();
+    if (m_sceneIndex == 0)
+    {
+        m_scene->clear();
+        m_scene->buildPlaneSphere();
+    }
+    else if (m_sceneIndex == 1)
+    {
+        m_scene->clear();
+        m_scene->buildCornellBox();
+    }
+    doneCurrent();
+    update();
+}
+
 void OpenGLWindow::initializeGL()
 {
     initializeOpenGLFunctions();
@@ -32,12 +48,12 @@ void OpenGLWindow::initializeGL()
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    loadShaders();
-    buildScene();
+    m_sceneIndex = 0;
+    m_scene->buildPlaneSphere();
 
+    loadShaders();
     m_frameTimer.start();
     m_lastTimeMs = m_frameTimer.elapsed();
-    // initial camera setup
     m_camera.setPosition(QVector3D(0.0f, 0.0f, 5.0f));
 }
 
@@ -104,53 +120,6 @@ void OpenGLWindow::loadShaders()
     }
 }
 
-void OpenGLWindow::buildScene()
-{
-    QVector<Mesh::Vertex> verts;
-    QVector<unsigned int> idx;
-
-    QVector<QVector3D> positions = {
-        {-1.0f, -1.0f,  1.0f},
-        { 1.0f, -1.0f,  1.0f},
-        { 1.0f,  1.0f,  1.0f},
-        {-1.0f,  1.0f,  1.0f},
-        {-1.0f, -1.0f, -1.0f},
-        { 1.0f, -1.0f, -1.0f},
-        { 1.0f,  1.0f, -1.0f},
-        {-1.0f,  1.0f, -1.0f}
-    };
-
-    QVector3D cFront(1.0f, 0.0f, 0.0f);
-    QVector3D cBack(0.0f, 1.0f, 0.0f);
-    QVector3D cLeft(0.0f, 0.0f, 1.0f);
-    QVector3D cRight(1.0f, 1.0f, 0.0f);
-    QVector3D cTop(1.0f, 0.0f, 1.0f);
-    QVector3D cBottom(0.0f, 1.0f, 1.0f);
-
-    auto pushQuad = [&](QVector3D a, QVector3D b, QVector3D c, QVector3D d, QVector3D color) {
-        unsigned int base = verts.size();
-        verts.append({a, color});
-        verts.append({b, color});
-        verts.append({c, color});
-        verts.append({d, color});
-        idx.append(base + 0); idx.append(base + 1); idx.append(base + 2);
-        idx.append(base + 2); idx.append(base + 3); idx.append(base + 0);
-    };
-
-    pushQuad(positions[0], positions[1], positions[2], positions[3], cFront);
-    pushQuad(positions[5], positions[4], positions[7], positions[6], cBack);
-    pushQuad(positions[4], positions[0], positions[3], positions[7], cLeft);
-    pushQuad(positions[1], positions[5], positions[6], positions[2], cRight);
-    pushQuad(positions[3], positions[2], positions[6], positions[7], cTop);
-    pushQuad(positions[4], positions[5], positions[1], positions[0], cBottom);
-
-    Mesh* cube = new Mesh();
-    cube->initialize(verts, idx);
-    cube->modelMatrix.setToIdentity();
-
-    m_scene->addMesh(cube);
-}
-
 void OpenGLWindow::keyPressEvent(QKeyEvent *ev)
 {
     if (ev->key() == Qt::Key_Escape && m_fpsActive) {
@@ -159,6 +128,10 @@ void OpenGLWindow::keyPressEvent(QKeyEvent *ev)
         setKeyboardGrabEnabled(false);
         setMouseGrabEnabled(false);
         return;
+    }
+
+    if (ev->key() == Qt::Key_Plus || ev->text() == "+") {
+        changeScene();
     }
 
     m_keysPressed.insert(ev->key());
@@ -236,7 +209,6 @@ void OpenGLWindow::loadOffFile(const QString &fileName,
 
     QTextStream in(&file);
 
-    // ----- HEADER -----
     QString header;
     in >> header;
     if (header != "OFF") {
@@ -258,10 +230,8 @@ void OpenGLWindow::loadOffFile(const QString &fileName,
     verts.reserve(vertexCount);
     idx.reserve(faceCount * 3);
 
-    // ----- DEFAULT COLOR -----
     QVector3D defaultColor(1.0f, 1.0f, 1.0f);
 
-    // ----- READ VERTICES -----
     std::vector<QVector3D> positions;
     positions.reserve(vertexCount);
 
@@ -271,11 +241,9 @@ void OpenGLWindow::loadOffFile(const QString &fileName,
         positions.emplace_back(x, y, z);
     }
 
-    // Convert all positions into Mesh::Vertex
     for (auto &p : positions)
         verts.append({p, defaultColor});
 
-    // ----- READ FACES -----
     for (int i = 0; i < faceCount; ++i) {
         int n, a, b, c;
         in >> n >> a >> b >> c;
@@ -298,7 +266,6 @@ void OpenGLWindow::openOffMesh(const QVector<Mesh::Vertex> &verts,
     mesh->modelMatrix.setToIdentity();
 
     m_scene->addMesh(mesh);
-
 }
 
 

@@ -3,6 +3,7 @@
 #include <QOpenGLVertexArrayObject>
 #include <QVector3D>
 #include <QMatrix4x4>
+#include "material.h"
 
 class Mesh
 {
@@ -20,9 +21,11 @@ public:
 
     QMatrix4x4 modelMatrix;
 
+    void addMaterial(const Material& m);
 private:
     QOpenGLBuffer m_vbo;
     QOpenGLBuffer m_ibo;
     QOpenGLVertexArrayObject m_vao;
     int m_indexCount;
+    Material m_material;
 };

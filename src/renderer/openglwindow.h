@@ -21,17 +21,16 @@ public:
     ~OpenGLWindow();
     void openOffMesh(const QVector<Mesh::Vertex> &verts,
                      const QVector<unsigned int> &idx);
-    void loadOffFile(const QString &fileName,
+    static void loadOffFile(const QString &fileName,
                      QVector<Mesh::Vertex> &verts,
                      QVector<unsigned int> &idx);
+    void changeScene();
 
 protected:
-    // OpenGL
     void initializeGL() override;
     void resizeGL(int w, int h) override;
     void paintGL() override;
 
-    // Input
     void keyPressEvent(QKeyEvent *ev) override;
     void keyReleaseEvent(QKeyEvent *ev) override;
     void mousePressEvent(QMouseEvent *ev) override;
@@ -42,7 +41,6 @@ private:
     QStatusBar * statusbar;
 
     void loadShaders();
-    void buildScene();
 
     QVector3D inputDirection() const;
 
@@ -52,6 +50,7 @@ private:
     QElapsedTimer m_frameTimer;
     qint64 m_lastTimeMs {0};
     QSet<int> m_keysPressed;
+    int m_sceneIndex = 0;
 
     bool m_fpsActive { false };
     QPointF m_lastMousePos;

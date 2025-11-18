@@ -10,14 +10,11 @@
 mainWindow::mainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    // Crée ton OpenGLWindow
     m_glWindow = new OpenGLWindow();
 
-    // Convertir QOpenGLWindow → widget
     QWidget *glWidget = QWidget::createWindowContainer(m_glWindow, this);
     setCentralWidget(glWidget);
 
-    // ==== Menu ====
     QMenu *menuFile = menuBar()->addMenu("File");
 
     QAction *loadMesh3D = new QAction("Load Mesh 3D", this);
@@ -36,14 +33,12 @@ void mainWindow::openOffMesh()
 
     statusBar()->showMessage("Loading OFF...");
 
-    // Lance le chargement en tâche de fond
     QtConcurrent::run([this, fileName]() {
         QVector<Mesh::Vertex> verts;
         QVector<unsigned int> idx;
 
         m_glWindow->loadOffFile(fileName, verts, idx);
 
-        // Retourner dans le thread UI :
         QMetaObject::invokeMethod(this, [=]() {
             m_glWindow->openOffMesh(verts, idx);
             statusBar()->showMessage("Mesh loaded");

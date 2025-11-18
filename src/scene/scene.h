@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QVector>
+#include "light.h"
 
 class Mesh;
 
@@ -10,12 +11,13 @@ public:
     Scene();
     ~Scene();
 
-    // ownership : Scene prend la possession du Mesh* (sera delete dans le destruteur)
     void addMesh(Mesh* m);
-
-    // accès en lecture seule à la liste de meshes
+    void clear();
     const QVector<Mesh*>& meshes() const { return m_meshes; }
+    void buildPlaneSphere();
+    void buildCornellBox();
 
 private:
     QVector<Mesh*> m_meshes;
+    QVector<Light> m_lights;
 };

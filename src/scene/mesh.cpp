@@ -16,6 +16,11 @@ Mesh::~Mesh()
     m_ibo.destroy();
 }
 
+void Mesh::addMaterial(const Material& m)
+{
+    m_material=m;
+}
+
 void Mesh::initialize(const QVector<Vertex> &vertices, const QVector<unsigned int> &indices)
 {
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
@@ -32,7 +37,6 @@ void Mesh::initialize(const QVector<Vertex> &vertices, const QVector<unsigned in
     m_ibo.allocate(indices.constData(), indices.size() * sizeof(unsigned int));
     m_indexCount = indices.size();
 
-    // vertex attributes will be enabled/linked by the shader program before rendering
     m_vao.release();
     m_vbo.release();
     m_ibo.release();
@@ -44,7 +48,6 @@ void Mesh::render()
     m_vbo.bind();
     m_ibo.bind();
 
-    // assume shader attributes are at location 0 (pos) and 1 (color)
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
     f->glEnableVertexAttribArray(0);
     f->glEnableVertexAttribArray(1);
