@@ -1,20 +1,20 @@
 #version 430
 // avant :
 
-// ---------------------------
+// ---------------
 // THREAD GROUP
-// ---------------------------
+// ---------------
 layout(local_size_x = 16, local_size_y = 16) in;
 
-// ---------------------------
-// ACCUMULATION IMAGE (lecture+écriture)
-// ---------------------------
+// ---------------------
+// ACCUMULATION IMAGE
+// ---------------------
 
 layout(rgba32f, binding = 0) coherent uniform image2D imgAccum;
 
-// ---------------------------
-// TYPES (identiques à ton code)
-// ---------------------------
+// ---------
+// TYPES
+// --------
 struct Sphere {
     vec4 centerRadius;
 
@@ -42,16 +42,16 @@ struct Light {
     vec4 color;
 };
 
-// ---------------------------
+// --------
 // SSBO
-// ---------------------------
+// --------
 layout(std430, binding = 1) buffer Spheres { Sphere spheres[]; };
 layout(std430, binding = 2) buffer Lights  { Light  lights[];  };
 layout(std430, binding = 3) buffer Squares { Square squares[]; };
 
-// ---------------------------
+// -----------
 // UNIFORMS
-// ---------------------------
+// -----------
 
 layout(location = 0) uniform int u_sphereCount;
 layout(location = 1) uniform int u_lightCount;
@@ -248,7 +248,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
 }
 
 // --------------------
-// MAIN PATH TRACER
+// MAIN RAY TRACER
 // --------------------
 void main()
 {
@@ -273,7 +273,7 @@ void main()
     vec3 throughput = vec3(1.0);
     vec3 radiance = vec3(0.0);
 
-    const int MAX_BOUNCES = 1;
+    const int MAX_BOUNCES = 10;
 
     for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
     {
