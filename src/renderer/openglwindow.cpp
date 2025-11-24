@@ -43,7 +43,6 @@ void OpenGLWindow::changeScene()
 
 void OpenGLWindow::initializeGL()
 {
-
     initializeOpenGLFunctions();
     qDebug() << "OpenGL Version:" << (const char*)glGetString(GL_VERSION);
     qDebug() << "GLSL Version:"  << (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
@@ -56,13 +55,17 @@ void OpenGLWindow::initializeGL()
     glBindVertexArray(m_quadVAO);
     glBindVertexArray(0);
 
-    glGenTextures(1, &m_computeTex);
-    glBindTexture(GL_TEXTURE_2D, m_computeTex);
+    glGenTextures(1, &m_currentTex);
+    glBindTexture(GL_TEXTURE_2D, m_currentTex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, qMax(1, width()), qMax(1, height()), 0, GL_RGBA, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
+    glGenTextures(1, &m_denoisedTex);
+    glBindTexture(GL_TEXTURE_2D, m_denoisedTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width(), height(), 0, GL_RGBA, GL_FLOAT, nullptr);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     glGenTextures(1, &m_accumTex);
     glBindTexture(GL_TEXTURE_2D, m_accumTex);
@@ -70,7 +73,6 @@ void OpenGLWindow::initializeGL()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
-
 
     m_lastCamPos = m_camera.position();
     m_lastCamFront = m_camera.front();
@@ -94,9 +96,15 @@ void OpenGLWindow::resizeGL(int w, int h)
     float aspect = float(w) / float(h);
     m_camera.setPerspective(60.0f, aspect, 0.1f, 100.0f);
     glViewport(0, 0, w, h);
-    glBindTexture(GL_TEXTURE_2D, m_computeTex);
+    glBindTexture(GL_TEXTURE_2D, m_currentTex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, qMax(1,w), qMax(1,h), 0, GL_RGBA, GL_FLOAT, nullptr);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (m_denoisedTex) {
+        glBindTexture(GL_TEXTURE_2D, m_denoisedTex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, qMax(1,w), qMax(1,h), 0, GL_RGBA, GL_FLOAT, nullptr);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     if (m_accumTex) {
         glBindTexture(GL_TEXTURE_2D, m_accumTex);
@@ -116,7 +124,6 @@ void OpenGLWindow::resetAccumulation()
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 }
-
 
 void OpenGLWindow::uploadSceneToGPU()
 {
@@ -217,25 +224,25 @@ void OpenGLWindow::uploadSceneToGPU()
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
-
 void OpenGLWindow::doRayTrace()
 {
+    // --- Update camera etc ---
     qint64 now = m_frameTimer.elapsed();
     float dt = (now - m_lastTimeMs) / 1000.0f;
     m_lastTimeMs = now;
 
     QVector3D dir = inputDirection();
-    QVector3D worldMove(0.0f, 0.0f, 0.0f);
+    QVector3D worldMove(0,0,0);
     if (!dir.isNull()) {
         QVector3D forward = m_camera.front();
-        QVector3D right   = QVector3D::crossProduct(forward, QVector3D(0.0f, 1.0f, 0.0f)).normalized();
+        QVector3D right   = QVector3D::crossProduct(forward, {0,1,0}).normalized();
         worldMove = forward * dir.z() + right * dir.x();
     }
     m_camera.processKeyboard(worldMove, dt);
 
-    if ( (m_camera.position() - m_lastCamPos).length() > 1e-4f ||
+    if ((m_camera.position() - m_lastCamPos).length() > 1e-4f ||
         (m_camera.front() - m_lastCamFront).length() > 1e-4f ||
-        (m_camera.up() - m_lastCamUp).length() > 1e-4f )
+        (m_camera.up() - m_lastCamUp).length() > 1e-4f)
     {
         resetAccumulation();
         m_lastCamPos   = m_camera.position();
@@ -243,33 +250,63 @@ void OpenGLWindow::doRayTrace()
         m_lastCamUp    = m_camera.up();
     }
 
+    uploadSceneToGPU();
+
+    int gx = (width()+15)/16;
+    int gy = (height()+15)/16;
+
+    // ==========================================
+    // STEP 1 : RAYTRACE → m_currentTex
+    // ==========================================
     m_computeProgram->bind();
 
     m_computeProgram->setUniformValue("u_sphereCount",  m_gpuSphereCount);
     m_computeProgram->setUniformValue("u_lightCount",   m_gpuLightCount);
     m_computeProgram->setUniformValue("u_squareCount",  m_gpuSquareCount);
+    m_computeProgram->setUniformValue("u_camPos",       m_camera.position());
+    m_computeProgram->setUniformValue("u_camFront",     m_camera.front());
+    m_computeProgram->setUniformValue("u_camRight",     m_camera.right());
+    m_computeProgram->setUniformValue("u_camUp",        m_camera.up());
+    m_computeProgram->setUniformValue("u_fovDeg",       60.0f);
+    m_computeProgram->setUniformValue("u_width",        width());
+    m_computeProgram->setUniformValue("u_height",       height());
+    m_computeProgram->setUniformValue("u_frameIndex",   m_accumFrame);
+    m_computeProgram->setUniformValue("u_spp", 4);
+    // WRITE-ONLY pour la frame brute
+    glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
-    m_computeProgram->setUniformValue("u_camPos",   m_camera.position());
-    m_computeProgram->setUniformValue("u_camFront", m_camera.front());
-    m_computeProgram->setUniformValue("u_camRight", m_camera.right());
-    m_computeProgram->setUniformValue("u_camUp",    m_camera.up());
-    m_computeProgram->setUniformValue("u_fovDeg",   60.0f);
-
-    m_computeProgram->setUniformValue("u_width",  width());
-    m_computeProgram->setUniformValue("u_height", height());
-    m_computeProgram->setUniformValue("u_frameIndex", m_accumFrame);
-
-    glBindImageTexture(0, m_accumTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-
-    int gx = (width()  + 15) / 16;
-    int gy = (height() + 15) / 16;
     glDispatchCompute(gx, gy, 1);
-
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     m_computeProgram->release();
 
+
+    // ==========================================
+    // STEP 2 : DENOISE + ACCUMULATION
+    // ==========================================
+    m_denoiseProgram->bind();
+    m_denoiseProgram->setUniformValue("u_frameIndex", m_accumFrame);
+
+    // 0 = noisy input
+    glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+
+    // 1 = denoised output
+    glBindImageTexture(1, m_denoisedTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+
+    // 2 = accumulated history
+    glBindImageTexture(2, m_accumTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+
+    glDispatchCompute(gx, gy, 1);
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+    m_denoiseProgram->release();
+
+
+    // ==========================================
+    // STEP 3 : DISPLAY accumulated buffer
+    // ==========================================
     glDisable(GL_DEPTH_TEST);
+
     m_screenProgram->bind();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_accumTex);
@@ -281,9 +318,17 @@ void OpenGLWindow::doRayTrace()
 
     m_screenProgram->release();
 
-    m_accumFrame = qMin(m_accumFrame + 1, 1000000);
+    if ((m_accumFrame & 31) == 0) {
+        qDebug() << "FrameIndex(accum)=" << m_accumFrame;
+    }
+    // Final
+    m_accumFrame++;
     update();
 }
+
+
+
+
 
 void OpenGLWindow::doRaster()
 {
@@ -339,35 +384,62 @@ void OpenGLWindow::paintGL()
         doRaster();
     }
 }
-
 void OpenGLWindow::loadShaders()
 {
+    // -------------------------------
+    // RAYTRACING SHADER
+    // -------------------------------
     m_computeProgram = new QOpenGLShaderProgram();
-    if (!m_computeProgram->addShaderFromSourceFile(QOpenGLShader::Compute, "src/shaders/raytrace.comp")) {
+    if (!m_computeProgram->addShaderFromSourceFile(
+            QOpenGLShader::Compute, "src/shaders/raytrace.comp")) {
         qWarning() << "Compute shader compile error:" << m_computeProgram->log();
     }
     if (!m_computeProgram->link()) {
         qWarning() << "Compute shader link error:" << m_computeProgram->log();
     }
 
+    // -------------------------------
+    // DENOISE SHADER   <--- AJOUT IMPORTANT
+    // -------------------------------
+    m_denoiseProgram = new QOpenGLShaderProgram();
+    if (!m_denoiseProgram->addShaderFromSourceFile(
+            QOpenGLShader::Compute, "src/shaders/denoise.comp"))
+    {
+        qWarning() << "Denoise shader compile error:" << m_denoiseProgram->log();
+    }
+    if (!m_denoiseProgram->link())
+    {
+        qWarning() << "Denoise shader link error:" << m_denoiseProgram->log();
+    }
+
+    // -------------------------------
+    // SCREEN SHADER
+    // -------------------------------
     m_screenProgram = new QOpenGLShaderProgram();
-    if (!m_screenProgram->addShaderFromSourceFile(QOpenGLShader::Vertex,   "src/shaders/screen.vert"))
+    if (!m_screenProgram->addShaderFromSourceFile(
+            QOpenGLShader::Vertex, "src/shaders/screen.vert"))
         qWarning() << "Screen vertex compile error:" << m_screenProgram->log();
-    if (!m_screenProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, "src/shaders/screen.frag"))
+
+    if (!m_screenProgram->addShaderFromSourceFile(
+            QOpenGLShader::Fragment, "src/shaders/screen.frag"))
         qWarning() << "Screen frag compile error:" << m_screenProgram->log();
+
     if (!m_screenProgram->link())
         qWarning() << "Screen program link error:" << m_screenProgram->log();
 
+    // -------------------------------
+    // RASTERIZATION PIPELINE SHADERS
+    // -------------------------------
     m_program = new QOpenGLShaderProgram();
     bool ok = m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "src/shaders/basic.vert");
     if (!ok) qWarning() << "Vertex shader compile error:" << m_program->log();
     ok = m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "src/shaders/basic.frag");
     if (!ok) qWarning() << "Fragment shader compile error:" << m_program->log();
-
     if (!m_program->link()) {
         qWarning() << "Shader program link error:" << m_program->log();
     }
 }
+
 
 void OpenGLWindow::keyPressEvent(QKeyEvent *ev)
 {

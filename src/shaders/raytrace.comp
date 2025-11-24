@@ -64,7 +64,7 @@ layout(location = 7) uniform int u_width;
 layout(location = 8) uniform int u_height;
 layout(location = 9) uniform int u_squareCount;
 layout(location = 10) uniform int u_frameIndex;
-
+layout(location = 11) uniform int u_spp;
 // -------
 // RNG
 // -------
@@ -250,99 +250,117 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
 // --------------------
 // MAIN RAY TRACER
 // --------------------
+
 void main()
 {
     ivec2 px = ivec2(gl_GlobalInvocationID.xy);
     if (px.x >= u_width || px.y >= u_height) return;
 
+    // -------------------------------------------
+    // RNG base seed
+    // -------------------------------------------
     uint seed = uint(px.x) + uint(px.y) * 1664525u + uint(u_frameIndex) * 1013904223u;
-    seed = hash_u(seed);
 
-    float jx = randf(seed);
-    float jy = randf(seed);
+    vec3 finalRadiance = vec3(0.0);
 
-    vec2 uv = ((vec2(px) + vec2(jx, jy)) / vec2(u_width, u_height)) * 2.0 - 1.0;
-
-    float fov = radians(u_fovDeg);
-    float aspect = float(u_width) / float(u_height);
-    float sx = uv.x * aspect * tan(fov * 0.5);
-    float sy = uv.y * tan(fov * 0.5);
-
-    vec3 ro = u_camPos;
-    vec3 rd = normalize(u_camRight * sx + u_camUp * sy + u_camFront);
-    vec3 throughput = vec3(1.0);
-    vec3 radiance = vec3(0.0);
-
-    const int MAX_BOUNCES = 10;
-
-    for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
+    // -------------------------------------------
+    // MULTI-SAMPLING OF PRIMARY RAYS
+    // -------------------------------------------
+    for (int s = 0; s < u_spp; s++)
     {
-        Hit h;
-        if (!trace(ro, rd, h))
+        uint sseed = hash_u(seed + uint(s));
+
+        // Jitter
+        float jx = randf(sseed);
+        float jy = randf(sseed);
+
+        vec2 uv = ((vec2(px) + vec2(jx, jy)) / vec2(u_width, u_height)) * 2.0 - 1.0;
+
+        float fov = radians(u_fovDeg);
+        float aspect = float(u_width) / float(u_height);
+        float sx = uv.x * aspect * tan(fov * 0.5);
+        float sy = uv.y * tan(fov * 0.5);
+
+        vec3 ro = u_camPos;
+        vec3 rd = normalize(u_camRight * sx + u_camUp * sy + u_camFront);
+
+        // -------------------------------------------
+        // PATH TRACING (ton code inchangé)
+        // -------------------------------------------
+        vec3 throughput = vec3(1.0);
+        vec3 radiance = vec3(0.0);
+
+        const int MAX_BOUNCES = 10;
+
+        for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
         {
-            // Light coming from environment
-            radiance += throughput * vec3(0.2, 0.3, 0.7);
-            break;
-        }
-
-        vec3 V = normalize(-rd);
-
-        vec3 directLight = h.diffuse * 0.05;
-
-        for (int li = 0; li < u_lightCount; li++)
-        {
-            vec3 Lpos = lights[li].posIntensity.xyz;
-            float intensity = lights[li].posIntensity.w;
-            vec3 lightColor = lights[li].color.rgb;
-
-            vec3 lightVec = Lpos - h.pos;
-            float dist = length(lightVec);
-            vec3 L = lightVec / dist;
-
-            Hit block;
-            if (trace(h.pos + h.normal * 0.001, L, block))
+            Hit h;
+            if (!trace(ro, rd, h))
             {
-                if (block.t < dist)
-                    continue;
+                radiance += throughput * vec3(0.2, 0.3, 0.7);
+                break;
             }
 
-            float attenuation = 1.0 / (dist * dist);
+            vec3 V = normalize(-rd);
+            vec3 directLight = h.diffuse * 0.05;
 
-            float diff = max(dot(h.normal, L), 0.0);
-            vec3 diffuseTerm = h.kd * h.diffuse * diff;
+            for (int li = 0; li < u_lightCount; li++)
+            {
+                vec3 Lpos = lights[li].posIntensity.xyz;
+                float intensity = lights[li].posIntensity.w;
+                vec3 lightColor = lights[li].color.rgb;
 
-            vec3 R = reflect(-L, h.normal);
-            float spec = pow(max(dot(R, V), 0.0), h.shininess);
-            vec3 specTerm = h.ks * h.specular * spec;
+                vec3 lightVec = Lpos - h.pos;
+                float dist = length(lightVec);
+                vec3 L = lightVec / dist;
 
-            vec3 contribution =
-                (diffuseTerm + specTerm) *
-                lightColor *
-                intensity *
-                attenuation;
+                Hit block;
+                if (trace(h.pos + h.normal * 0.001, L, block))
+                {
+                    if (block.t < dist) continue;
+                }
 
-            directLight += contribution;
+                float attenuation = 1.0 / (dist * dist);
+
+                float diff = max(dot(h.normal, L), 0.0);
+                vec3 diffuseTerm = h.kd * h.diffuse * diff;
+
+                vec3 R = reflect(-L, h.normal);
+                float spec = pow(max(dot(R, V), 0.0), h.shininess);
+                vec3 specTerm = h.ks * h.specular * spec;
+
+                vec3 contribution =
+                    (diffuseTerm + specTerm) *
+                    lightColor *
+                    intensity *
+                    attenuation;
+
+                directLight += contribution;
+            }
+
+            radiance += throughput * directLight;
+
+            throughput *= h.diffuse;
+
+            if (bounce > 2)
+            {
+                float p = clamp(max(max(throughput.r, throughput.g), throughput.b), 0.05, 0.95);
+                if (randf(sseed) > p) break;
+                throughput /= p;
+            }
+
+            ro = h.pos + h.normal * 1e-4;
+            rd = randomHemisphere(h.normal, sseed);
         }
 
-        radiance += throughput * directLight;
-
-        throughput *= h.diffuse;
-
-        if (bounce > 2)
-        {
-            float p = clamp(max(max(throughput.r, throughput.g), throughput.b), 0.05, 0.95);
-            if (randf(seed) > p) break;
-            throughput /= p;
-        }
-
-        ro = h.pos + h.normal * 1e-4;
-        rd = randomHemisphere(h.normal, seed);
+        // Accumule le sample
+        finalRadiance += radiance;
     }
 
-    vec4 old = imageLoad(imgAccum, px);
-    float frameF = float(max(u_frameIndex, 0));
+    // -------------------------------------------
+    // MOYENNE DES SAMPLES
+    // -------------------------------------------
+    finalRadiance /= float(u_spp);
 
-    vec3 blended = (old.rgb * frameF + radiance) / (frameF + 1.0);
-
-    imageStore(imgAccum, px, vec4(blended, 1.0));
+    imageStore(imgAccum, px, vec4(finalRadiance, 1.0));
 }
