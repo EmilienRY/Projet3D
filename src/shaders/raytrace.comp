@@ -1,5 +1,4 @@
 #version 430
-// avant :
 
 // ---------------
 // THREAD GROUP
@@ -9,7 +8,6 @@ layout(local_size_x = 16, local_size_y = 16) in;
 // ---------------------
 // ACCUMULATION IMAGE
 // ---------------------
-
 layout(rgba32f, binding = 0) coherent uniform image2D imgAccum;
 
 // ---------
@@ -38,7 +36,6 @@ struct Square {
     int Material_type;
 };
 
-
 struct Light {
     vec4 posIntensity;
     vec4 color;
@@ -55,7 +52,6 @@ layout(std430, binding = 3) buffer Squares { Square squares[]; };
 // -----------
 // UNIFORMS
 // -----------
-
 layout(location = 0) uniform int u_sphereCount;
 layout(location = 1) uniform int u_lightCount;
 layout(location = 2) uniform vec3 u_camPos;
@@ -67,6 +63,7 @@ layout(location = 7) uniform int u_width;
 layout(location = 8) uniform int u_height;
 layout(location = 9) uniform int u_squareCount;
 layout(location = 10) uniform int u_frameIndex;
+layout(location = 11) uniform int u_spp;
 
 // -------
 // RNG
@@ -109,6 +106,16 @@ vec3 randomHemisphere(vec3 N, inout uint seed)
     );
 }
 
+vec3 sampleUniformSphere(inout uint seed)
+{
+    float u = randf(seed);
+    float v = randf(seed);
+    float z = 1.0 - 2.0 * u;                
+    float phi = 2.0 * 3.14159265358979323846 * v;
+    float r = sqrt(max(0.0, 1.0 - z * z));
+    return vec3(r * cos(phi), r * sin(phi), z);
+}
+
 // -------------
 // HIT STRUCT
 // -------------
@@ -126,8 +133,6 @@ struct Hit {
     float shininess;
     int Material_type;
 };
-
-
 
 // ---------------
 // INTERSECTIONS
@@ -253,16 +258,6 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
     return found;
 }
 
-vec3 sampleUniformSphere(inout uint seed)
-{
-    float u = randf(seed);
-    float v = randf(seed);
-    float z = 1.0 - 2.0 * u;                // z uniforme sur [-1,1]
-    float phi = 2.0 * 3.14159265358979323846 * v;
-    float r = sqrt(max(0.0, 1.0 - z * z));
-    return vec3(r * cos(phi), r * sin(phi), z);
-}
-
 // --------------------
 // MAIN RAY TRACER
 // --------------------
@@ -272,164 +267,133 @@ void main()
     if (px.x >= u_width || px.y >= u_height) return;
 
     uint seed = uint(px.x) + uint(px.y) * 1664525u + uint(u_frameIndex) * 1013904223u;
-    seed = hash_u(seed);
+    vec3 finalRadiance = vec3(0.0);
 
-    float jx = randf(seed);
-    float jy = randf(seed);
-
-    vec2 uv = ((vec2(px) + vec2(jx, jy)) / vec2(u_width, u_height)) * 2.0 - 1.0;
-
-    float fov = radians(u_fovDeg);
-    float aspect = float(u_width) / float(u_height);
-    float sx = uv.x * aspect * tan(fov * 0.5);
-    float sy = uv.y * tan(fov * 0.5);
-
-    vec3 ro = u_camPos;
-    vec3 rd = normalize(u_camRight * sx + u_camUp * sy + u_camFront);
-    vec3 throughput = vec3(1.0);
-    vec3 radiance = vec3(0.0);
-
-    const int MAX_BOUNCES = 10;
-
-    for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
+    for (int s = 0; s < u_spp; s++)
     {
-        Hit h;
+        uint sseed = hash_u(seed + uint(s));
+        float jx = randf(sseed);
+        float jy = randf(sseed);
 
-        if (!trace(ro, rd, h))
+        vec2 uv = ((vec2(px) + vec2(jx, jy)) / vec2(u_width, u_height)) * 2.0 - 1.0;
+
+        float fov = radians(u_fovDeg);
+        float aspect = float(u_width) / float(u_height);
+        float sx = uv.x * aspect * tan(fov * 0.5);
+        float sy = uv.y * tan(fov * 0.5);
+
+        vec3 ro = u_camPos;
+        vec3 rd = normalize(u_camRight * sx + u_camUp * sy + u_camFront);
+
+        vec3 throughput = vec3(1.0);
+        vec3 radiance = vec3(0.0);
+        const int MAX_BOUNCES = 10;
+
+        for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
         {
-            // Light coming from environment
-            radiance += throughput * vec3(0.2, 0.3, 0.7);
-            break;
-        }
+            Hit h;
 
-        // --- Miroir ---
-        if (h.Material_type == 1) {
-            rd = reflect(rd, h.normal);
+            if (!trace(ro, rd, h))
+            {
+                radiance += throughput * vec3(0.2, 0.3, 0.7);
+                break;
+            }
+
+            // --- Miroir ---
+            if (h.Material_type == 1) {
+                rd = reflect(rd, h.normal);
+                ro = h.pos + h.normal * 1e-4;
+                throughput *= vec3(1.0);
+                continue;
+            }
+
+            // --- Verre / Réfraction ---
+            if (h.Material_type == 2) {
+                float n1 = 1.0;
+                float n2 = 1.5;
+                float eta = n1 / n2;
+
+                vec3 I = normalize(rd);
+                vec3 N = h.normal;
+                float cosi = clamp(dot(I, N), -1.0, 1.0);
+
+                if (cosi > 0.0) {
+                    N = -N;
+                    float tmp = n1; n1 = n2; n2 = tmp;
+                    eta = n1 / n2;
+                    cosi = -cosi;
+                }
+
+                float k = 1.0 - eta * eta * (1.0 - cosi * cosi);
+
+                if (k < 0.0) rd = reflect(I, N);
+                else rd = eta * I - (eta * cosi + sqrt(k)) * N;
+
+                ro = h.pos + N * 1e-4;
+                throughput *= vec3(1.0);
+                continue;
+            }
+
+            vec3 V = normalize(-rd);
+            vec3 directLight = h.diffuse * 0.05;
+
+            for (int li = 0; li < u_lightCount; li++)
+            {
+                vec3 Lpos = lights[li].posIntensity.xyz;
+                float intensity = lights[li].posIntensity.w;
+                vec3 lightColor = lights[li].color.rgb;
+                float lightRadius = lights[li].lightRadius;
+
+                vec3 accumContribution = vec3(0.0);
+                int shadowSamples = 16;
+
+                for (int s = 0; s < shadowSamples; s++)
+                {
+                    vec3 rnd = sampleUniformSphere(seed);
+                    vec3 lightPoint = Lpos + rnd * lightRadius;
+
+                    vec3 toLight = lightPoint - h.pos;
+                    float distSample = length(toLight);
+                    vec3 Ls = toLight / distSample;
+
+                    Hit block2;
+                    bool hitSomething = trace(h.pos + h.normal * 1e-4, Ls, block2);
+                    bool visible = !(hitSomething && block2.t < distSample - 1e-4);
+
+                    if (visible)
+                    {
+                        float attenuation = 1.0 / (distSample * distSample);
+                        float diff = max(dot(h.normal, Ls), 0.0);
+                        vec3 diffuseTerm = h.kd * h.diffuse * diff;
+
+                        vec3 R = reflect(-Ls, h.normal);
+                        float spec = pow(max(dot(R, V), 0.0), h.shininess);
+                        vec3 specTerm = h.ks * h.specular * spec;
+
+                        accumContribution += (diffuseTerm + specTerm) * lightColor * intensity * attenuation;
+                    }
+                }
+
+                directLight += accumContribution / float(shadowSamples);
+            }
+
+            radiance += throughput * directLight;
+            throughput *= h.diffuse;
+
+            if (bounce > 2)
+            {
+                float p = clamp(max(max(throughput.r, throughput.g), throughput.b), 0.05, 0.95);
+                if (randf(sseed) > p) break;
+                throughput /= p;
+            }
+
             ro = h.pos + h.normal * 1e-4;
-            throughput *= vec3(1.0);
-            continue;
+            rd = randomHemisphere(h.normal, sseed);
         }
 
-        if (h.Material_type == 2) {
-
-            float n1 = 1.0;
-            float n2 = 1.5;
-
-            float eta = n1 / n2;
-
-            vec3 I = normalize(rd);
-            vec3 N = h.normal;
-
-            float cosi = clamp(dot(I, N), -1.0, 1.0);
-
-            if (cosi > 0.0) {
-                N = -N;
-                float tmp = n1;
-                n1 = n2;
-                n2 = tmp;
-                eta = n1 / n2;
-                cosi = -cosi;
-            }
-
-            float k = 1.0 - eta * eta * (1.0 - cosi * cosi);
-
-            if (k < 0.0) {
-                rd = reflect(I, N);
-            } else {
-                rd = eta * I - (eta * cosi + sqrt(k)) * N;
-            }
-
-            ro = h.pos + N * 1e-4;
-            throughput *= vec3(1.0);
-            continue;
-        }
-
-
-        vec3 V = normalize(-rd);
-
-        vec3 directLight = h.diffuse * 0.05;
-
-for (int li = 0; li < u_lightCount; li++)
-{
-    vec3 Lpos = lights[li].posIntensity.xyz;
-    float intensity = lights[li].posIntensity.w;
-    vec3 lightColor = lights[li].color.rgb;
-    float lightRadius = lights[li].lightRadius; // <-- assure-toi que CPU le définit > 0
-
-    // vecteur vers le centre (utilisé pour termes géométriques approximatifs)
-    vec3 lightVec = Lpos - h.pos;
-    float distCenter = length(lightVec);
-    vec3 Lcenter = lightVec / distCenter;
-
-    // soft shadows : échantillonner la surface de la light (sphère)
-    int shadowSamples = 16; // 8 = rapide mais bruité, 16/32 = mieux
-    vec3 accumContribution = vec3(0.0);
-
-    for (int s = 0; s < shadowSamples; s++)
-    {
-        // échantillon sur la sphère de rayon lightRadius
-        vec3 rnd = sampleUniformSphere(seed);   // inout seed
-        vec3 lightPoint = Lpos + rnd * lightRadius;
-
-        // direction vers ce point échantillonné
-        vec3 toLight = lightPoint - h.pos;
-        float distSample = length(toLight);
-        vec3 Ls = toLight / distSample;
-
-        // shadow ray
-        Hit block2;
-        bool hitSomething = trace(h.pos + h.normal * 1e-4, Ls, block2);
-
-        bool visible = true;
-        if (hitSomething) {
-            if (block2.t < distSample - 1e-4) visible = false;
-        }
-
-        if (visible)
-        {
-            // calculer contribution pour ce sample (utiliser distSample pour atténuation)
-            float attenuation = 1.0 / (distSample * distSample);
-
-            float diff = max(dot(h.normal, Ls), 0.0);
-            vec3 diffuseTerm = h.kd * h.diffuse * diff;
-
-            vec3 R = reflect(-Ls, h.normal);
-            float spec = pow(max(dot(R, V), 0.0), h.shininess);
-            vec3 specTerm = h.ks * h.specular * spec;
-
-            vec3 contrib = (diffuseTerm + specTerm) * lightColor * intensity * attenuation;
-            accumContribution += contrib;
-        }
-        // si invisible on ajoute rien pour ce sample
+        finalRadiance += radiance;
     }
 
-    // moyenne des samples
-    vec3 contribution = accumContribution / float(shadowSamples);
-
-    // ajouter à directLight
-    directLight += contribution;
-}
-
-
-        radiance += throughput * directLight;
-
-        throughput *= h.diffuse;
-
-        if (bounce > 2)
-        {
-            float p = clamp(max(max(throughput.r, throughput.g), throughput.b), 0.05, 0.95);
-            if (randf(seed) > p) break;
-            throughput /= p;
-        }
-
-        ro = h.pos + h.normal * 1e-4;
-        rd = randomHemisphere(h.normal, seed);
-    }
-
-    vec4 old = imageLoad(imgAccum, px);
-    float frameF = float(max(u_frameIndex, 0));
-
-    vec3 blended = (old.rgb * frameF + radiance) / (frameF + 1.0);
-
-    imageStore(imgAccum, px, vec4(blended, 1.0));
+    finalRadiance /= float(u_spp);
+    imageStore(imgAccum, px, vec4(finalRadiance, 1.0));
 }

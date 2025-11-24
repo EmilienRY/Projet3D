@@ -1,0 +1,67 @@
+#version 430
+layout(local_size_x=16, local_size_y=16) in;
+
+layout(rgba32f, binding=0) uniform readonly  image2D imgNoisy;   // new frame
+layout(rgba32f, binding=1) uniform writeonly image2D imgDenoised; // temp
+layout(rgba32f, binding=2) uniform coherent image2D imgAccum;    // accumulation
+
+uniform int u_frameIndex;
+
+float gaussian(float x, float sigma)
+{
+    return exp(-(x*x) / (2*sigma*sigma));
+}
+
+void main()
+{
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(imgNoisy);
+
+    if (px.x >= size.x || px.y >= size.y) return;
+
+    vec3 center = imageLoad(imgNoisy, px).rgb;
+
+    vec3 sum = vec3(0);
+    float wsum = 0;
+
+    // ====== VERSION BOOSTÉE POUR PATH TRACING ======
+    int radius = 7;
+
+    for (int dy=-radius; dy<=radius; dy++)
+    for (int dx=-radius; dx<=radius; dx++)
+    {
+        ivec2 p = px + ivec2(dx,dy);
+        if (p.x<0||p.y<0||p.x>=size.x||p.y>=size.y)
+            continue;
+
+        vec3 c = imageLoad(imgNoisy, p).rgb;
+
+        // filtres plus permissifs
+        float ws = gaussian(length(vec2(dx,dy)), 3.0);
+        float wc = gaussian(length(c - center), 1.0);
+
+        float w = ws * wc;
+        sum += c * w;
+        wsum += w;
+    }
+
+    vec3 denoised = sum / max(wsum, 1e-6);
+
+    // ===== ACCUMULATION =====
+    if (u_frameIndex == 0)
+    {
+        imageStore(imgAccum, px, vec4(denoised,1));
+    }
+    else
+    {
+        vec3 prev = imageLoad(imgAccum, px).rgb;
+
+        float alpha = 1.0 / float(u_frameIndex + 1);
+        vec3 accum = mix(prev, denoised, alpha);
+
+        imageStore(imgAccum, px, vec4(accum,1));
+    }
+
+    imageStore(imgDenoised, px, vec4(denoised,1));
+}
+

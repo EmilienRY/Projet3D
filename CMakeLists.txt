@@ -18,7 +18,8 @@ qt_add_executable(appRayTracingGPU
     src/shaders/raytrace.comp
     src/renderer/gpu_stucts.h
     src/shaders/screen.frag
-    src/shaders/screen.vert)
+    src/shaders/screen.vert
+    src/shaders/save.txt)
 
 # --- Définir les fichiers source
 target_sources(appRayTracingGPU PRIVATE

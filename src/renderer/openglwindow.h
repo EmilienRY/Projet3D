@@ -59,9 +59,9 @@ private:
     bool m_fpsActive { false };
     QPointF m_lastMousePos;
 
-    GLuint m_computeTex = 0;
     QOpenGLShaderProgram* m_computeProgram = nullptr;
     QOpenGLShaderProgram* m_screenProgram  = nullptr;
+    QOpenGLShaderProgram* m_denoiseProgram  = nullptr;
 
     GLuint m_ssboSpheres = 0;
     GLuint m_ssboLights  = 0;
@@ -69,6 +69,9 @@ private:
 
     GLuint m_quadVAO = 0;
     GLuint m_accumTex = 0;
+    GLuint m_currentTex = 0;
+    GLuint m_denoisedTex = 0;
+
     int m_accumFrame = 0;
     int m_maxBounces = 4;
 
