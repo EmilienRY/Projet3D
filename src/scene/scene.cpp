@@ -97,6 +97,7 @@ void Scene::buildPlaneSphere()
     m1.ks = 0.3;
     m1.specularColor = QVector3D(1,1,1);
     m1.shininess = 32;
+    m1.type=0;
 
     Mesh* plane = new Mesh();
     plane->addMaterial(m1);
@@ -115,6 +116,7 @@ void Scene::buildPlaneSphere()
     //m2.specularColor = m2.color;
     m2.specularColor = QVector3D(1.0,1.0,1.0);
     m2.shininess = 128;
+    m2.type = 1;
 
 
     Mesh* sphere = new Mesh();
@@ -151,16 +153,16 @@ void Scene::buildCornellBox()
     QVector3D Hh(-L, H,-D);
 
     Material white;  white.color = QVector3D(0.78f,0.78f,0.78f);
-    white.kd = 0.9f; white.ks = 0.0f;
-    white.specularColor = QVector3D(1,1,1); white.shininess = 32;
+    white.kd = 0.9f; white.ks = 0.0f; white.type=0;
+    white.specularColor = QVector3D(1.0,1.0,1.0); white.shininess = 32;
 
     Material red;    red.color = QVector3D(0.65f,0.05f,0.05f);
-    red.kd = 0.9f; red.ks = 0.0f;
-    red.specularColor = QVector3D(1,1,1); red.shininess = 32;
+    red.kd = 0.9f; red.ks = 0.0f; red.type=0;
+    red.specularColor = QVector3D(1.0,1.0,1.0); red.shininess = 32;
 
     Material green;  green.color = QVector3D(0.12f,0.55f,0.15f);
-    green.kd = 0.9f; green.ks = 0.0f;
-    green.specularColor = QVector3D(1,1,1); green.shininess = 32;
+    green.kd = 0.9f; green.ks = 0.0f; green.type=0;
+    green.specularColor = QVector3D(1.0,1.0,1.0); green.shininess = 32;
 
     auto makeQuad = [&](QVector3D a, QVector3D b, QVector3D c, QVector3D d, Material mat)
     {
@@ -191,44 +193,49 @@ void Scene::buildCornellBox()
     makeQuad(Dp, C, G, Hh, white);   // ceiling
     makeQuad(E, F, B, A, white);     // floor
 
-    {
-        Mesh* s1 = new Mesh();
-        s1->isSphere = true;
-        s1->modelMatrix.setToIdentity();
-        s1->modelMatrix.translate(1.0f, -2.0f, 0.5f);
+    QVector<Mesh::Vertex> sVerts;
+    QVector<unsigned int> sIdx;
+    generateSphereMesh(1.0f, 20, 20, sVerts, sIdx);
 
-        Material m;
-        m.color = QVector3D(0.9f, 0.2f, 0.2f);
-        m.kd = 0.8f;
-        m.ks = 0.2f;
-        m.specularColor = QVector3D(1,1,1);
-        m.shininess = 64;
+    Mesh* s1 = new Mesh();
+    s1->isSphere = true;
+    s1->initialize(sVerts, sIdx);
+    //s1->modelMatrix.setToIdentity();
+    s1->modelMatrix.translate(1.0f, -2.0f, 0.5f);
 
-        s1->addMaterial(m);
-        addMesh(s1);
-    }
+    Material mirror;
+    mirror.color = QVector3D(0.9f, 0.2f, 0.2f);
+    mirror.kd = 0.8f;
+    mirror.ks = 0.2f;
+    mirror.specularColor = QVector3D(1.0,1.0,1.0);
+    mirror.shininess = 64;
+    mirror.type = 1;
 
-    {
-        Mesh* s2 = new Mesh();
-        s2->isSphere = true;
-        s2->modelMatrix.setToIdentity();
-        s2->modelMatrix.translate(-1.0f, -2.f, -1.0f);
+    s1->addMaterial(mirror);
+    addMesh(s1);
 
-        Material m;
-        m.color = QVector3D(0.4f, 0.4f, 1.0f);
-        m.kd = 0.8f;
-        m.ks = 0.1f;
-        m.specularColor = QVector3D(1,1,1);
-        m.shininess = 32;
+    Mesh* s2 = new Mesh();
+    s2->isSphere = true;
+    s2->initialize(sVerts, sIdx);
+    //s2->modelMatrix.setToIdentity();
+    s2->modelMatrix.translate(-1.0f, -2.f, -1.0f);
 
-        s2->addMaterial(m);
-        addMesh(s2);
-    }
+    Material mate;
+    mate.color = QVector3D(0.4f, 0.4f, 1.0f);
+    mate.kd = 0.8f;
+    mate.ks = 0.1f;
+    mate.specularColor = QVector3D(1.0,1.0,1.0);
+    mate.shininess = 32;
+    mate.type = 2;
+
+    s2->addMaterial(mate);
+    addMesh(s2);
 
     Light l;
     l.position  = QVector3D(0, 2.8f, 0);
-    l.color     = QVector3D(1,1,1);
+    l.color     = QVector3D(1.0,1.0,1.0);
     l.intensity = 10.0f;
+    l.lightRadius = 5.0f;
 
     m_lights.append(l);
 }
