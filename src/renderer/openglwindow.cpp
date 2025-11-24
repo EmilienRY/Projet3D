@@ -196,7 +196,7 @@ void OpenGLWindow::uploadSceneToGPU()
         g.r = l.color.x();
         g.g = l.color.y();
         g.b = l.color.z();
-        g.pad0 = 0.0f;
+        g.lightRadius = l.lightRadius;
         lights.push_back(g);
     }
 

@@ -235,6 +235,7 @@ void Scene::buildCornellBox()
     l.position  = QVector3D(0, 2.8f, 0);
     l.color     = QVector3D(1.0,1.0,1.0);
     l.intensity = 10.0f;
+    l.lightRadius = 5.0f;
 
     m_lights.append(l);
 }

@@ -27,5 +27,5 @@ struct GpuSquare {
 
 struct GpuLight {
     float px, py, pz, intensity;
-    float r, g, b, pad0;
+    float r, g, b, lightRadius;
 };
