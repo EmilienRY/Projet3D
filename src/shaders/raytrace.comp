@@ -298,6 +298,41 @@ void main()
             continue;
         }
 
+        if (h.Material_type == 2) {
+
+            float n1 = 1.0;
+            float n2 = 1.5;
+
+            float eta = n1 / n2;
+
+            vec3 I = normalize(rd);
+            vec3 N = normalize(h.normal);
+
+            float cosi = clamp(dot(I, N), -1.0, 1.0);
+
+            if (cosi > 0.0) {
+                N = -N;
+                float tmp = n1;
+                n1 = n2;
+                n2 = tmp;
+                eta = n1 / n2;
+                cosi = -cosi;
+            }
+
+            float k = 1.0 - eta * eta * (1.0 - cosi * cosi);
+
+            if (k < 0.0) {
+                rd = reflect(I, N);
+            } else {
+                rd = eta * I - (eta * cosi + sqrt(k)) * N;
+            }
+
+            ro = h.pos + N * 1e-4;
+            throughput *= vec3(1.0);
+            continue;
+        }
+
+
         vec3 V = normalize(-rd);
 
         vec3 directLight = h.diffuse * 0.05;

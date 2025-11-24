@@ -226,7 +226,7 @@ void Scene::buildCornellBox()
     mate.ks = 0.1f;
     mate.specularColor = QVector3D(1.0,1.0,1.0);
     mate.shininess = 32;
-    mate.type = 0;
+    mate.type = 2;
 
     s2->addMaterial(mate);
     addMesh(s2);
