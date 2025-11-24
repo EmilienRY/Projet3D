@@ -5,6 +5,9 @@ struct GpuSphere {
     float diffuseR, diffuseG, diffuseB, kd;
     float specularR, specularG, specularB, ks;
     float shininess; float pad1, pad2, pad3;
+    int Material_type;
+    int pad4, pad5, pad6;
+
 };
 
 
@@ -16,6 +19,9 @@ struct GpuSquare {
     float diffuseR, diffuseG, diffuseB, kd;
     float specularR, specularG, specularB, ks;
     float shininess, pad1, pad2, pad3;
+    int Material_type;
+    int pad4, pad5, pad6;
+
 };
 
 

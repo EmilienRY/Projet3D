@@ -22,6 +22,7 @@ struct Sphere {
     vec3 specular;  float ks;
     float shininess;
     float pad1, pad2, pad3;
+    int Material_type;
 };
 
 struct Square {
@@ -34,6 +35,7 @@ struct Square {
     vec3 specular;  float ks;
     float shininess;
     float pad1, pad2, pad3;
+    int Material_type;
 };
 
 
@@ -121,6 +123,7 @@ struct Hit {
     float ks;
 
     float shininess;
+    int Material_type;
 };
 
 
@@ -216,6 +219,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                 hit.specular = spheres[i].specular;
                 hit.ks = spheres[i].ks;
                 hit.shininess = spheres[i].shininess;
+                hit.Material_type = spheres[i].Material_type;
 
                 found = true;
             }
@@ -239,6 +243,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                 hit.kd=kd;
                 hit.ks=ks;
                 hit.shininess=shininess;
+                hit.Material_type = squares[i].Material_type;
                 found = true;
             }
         }
@@ -283,6 +288,14 @@ void main()
             // Light coming from environment
             radiance += throughput * vec3(0.2, 0.3, 0.7);
             break;
+        }
+
+        // --- Miroir ---
+        if (h.Material_type == 1) {
+            rd = reflect(rd, h.normal);
+            ro = h.pos + h.normal * 1e-4;
+            throughput *= vec3(1.0);
+            continue;
         }
 
         vec3 V = normalize(-rd);

@@ -7,4 +7,5 @@ struct Material
     float shininess;
     float kd;
     float ks;
+    int type;
 };

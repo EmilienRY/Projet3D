@@ -146,6 +146,10 @@ void OpenGLWindow::uploadSceneToGPU()
             s.pad1=0.0f;
             s.pad2=0.0f;
             s.pad3=0.0f;
+            s.pad4=0;
+            s.pad5=0;
+            s.pad6=0;
+            s.Material_type=mesh->material().type;
             spheres.push_back(s);
         }
         else
@@ -171,6 +175,10 @@ void OpenGLWindow::uploadSceneToGPU()
             sq.specularG = mesh->material().specularColor.y();
             sq.specularB = mesh->material().specularColor.z();
             sq.shininess=mesh->material().shininess;
+            sq.Material_type=mesh->material().type;
+            sq.pad4=0;
+            sq.pad5=0;
+            sq.pad6=0;
 
             squares.push_back(sq);
         }
