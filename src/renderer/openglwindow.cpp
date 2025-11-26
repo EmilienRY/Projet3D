@@ -65,11 +65,20 @@ void OpenGLWindow::initializeGL()
     glGenTextures(1, &m_denoisedTex);
     glBindTexture(GL_TEXTURE_2D, m_denoisedTex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width(), height(), 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glGenTextures(1, &m_accumTex);
     glBindTexture(GL_TEXTURE_2D, m_accumTex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, qMax(1, width()), qMax(1, height()), 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenTextures(1, &m_gBufferTex);
+    glBindTexture(GL_TEXTURE_2D, m_gBufferTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width(), height(), 0, GL_RGBA, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -112,6 +121,12 @@ void OpenGLWindow::resizeGL(int w, int h)
         glBindTexture(GL_TEXTURE_2D, 0);
         m_accumFrame = 0;
     }
+
+    if (m_gBufferTex) {
+        glBindTexture(GL_TEXTURE_2D, m_gBufferTex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, qMax(1,w), qMax(1,h), 0, GL_RGBA, GL_FLOAT, nullptr);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 }
 
 void OpenGLWindow::resetAccumulation()
@@ -130,6 +145,8 @@ void OpenGLWindow::uploadSceneToGPU()
     std::vector<GpuSphere> spheres;
     std::vector<GpuSquare> squares;
     std::vector<GpuLight>  lights;
+
+    // envoie des meshs
 
     for (Mesh* mesh : m_scene->meshes())
     {
@@ -191,7 +208,7 @@ void OpenGLWindow::uploadSceneToGPU()
         }
     }
 
-    // --- LIGHTS ---
+    //  envoie des lumières
     for (auto &l : m_scene->lights())
     {
         GpuLight g;
@@ -211,7 +228,6 @@ void OpenGLWindow::uploadSceneToGPU()
     m_gpuSquareCount = squares.size();
     m_gpuLightCount  = lights.size();
 
-    // Upload buffers
     if (!m_ssboSpheres) glGenBuffers(1, &m_ssboSpheres);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboSpheres);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuSphere)*spheres.size(),
@@ -232,9 +248,9 @@ void OpenGLWindow::uploadSceneToGPU()
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
+
 void OpenGLWindow::doRayTrace()
 {
-    // --- Update camera etc ---
     qint64 now = m_frameTimer.elapsed();
     float dt = (now - m_lastTimeMs) / 1000.0f;
     m_lastTimeMs = now;
@@ -263,9 +279,7 @@ void OpenGLWindow::doRayTrace()
     int gx = (width()+15)/16;
     int gy = (height()+15)/16;
 
-    // ==========================================
-    // STEP 1 : RAYTRACE → m_currentTex
-    // ==========================================
+    // RAYTRACE 
     m_computeProgram->bind();
 
     m_computeProgram->setUniformValue("u_sphereCount",  m_gpuSphereCount);
@@ -279,45 +293,67 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->setUniformValue("u_width",        width());
     m_computeProgram->setUniformValue("u_height",       height());
     m_computeProgram->setUniformValue("u_frameIndex",   m_accumFrame);
-    m_computeProgram->setUniformValue("u_spp", 4);
-    // WRITE-ONLY pour la frame brute
-    glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
+    int currentSpp  = 1;
+    m_computeProgram->setUniformValue("u_spp", currentSpp);
+
+    glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glBindImageTexture(4, m_gBufferTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glDispatchCompute(gx, gy, 1);
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
     m_computeProgram->release();
 
 
-    // ==========================================
-    // STEP 2 : DENOISE + ACCUMULATION
-    // ==========================================
+    // DENOISE + ACCUMULATION 
+
     m_denoiseProgram->bind();
     m_denoiseProgram->setUniformValue("u_frameIndex", m_accumFrame);
 
-    // 0 = noisy input
-    glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+    int passes = 3;
 
-    // 1 = denoised output
-    glBindImageTexture(1, m_denoisedTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    for (int i = 0; i < passes; i++)
+    {
+        int step = 1 << i;
+        m_denoiseProgram->setUniformValue("u_stepSize", step);
+        m_denoiseProgram->setUniformValue("u_passIndex", i);
 
-    // 2 = accumulated history
-    glBindImageTexture(2, m_accumTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+        glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+        
+        glBindImageTexture(2, m_accumTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
-    glDispatchCompute(gx, gy, 1);
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        glBindImageTexture(3, m_gBufferTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+
+        if (i == 0)
+        {
+            glBindImageTexture(1, m_denoisedTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+        }
+        else if (i == 1)
+        {
+            glBindImageTexture(5, m_denoisedTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+            glBindImageTexture(1, m_currentTex,  0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+        }
+        else if (i == 2)
+        {
+            glBindImageTexture(5, m_currentTex,  0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+            glBindImageTexture(1, m_denoisedTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+        }
+
+        glDispatchCompute(gx, gy, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    }
 
     m_denoiseProgram->release();
 
+    // AFFICHAGE
 
-    // ==========================================
-    // STEP 3 : DISPLAY accumulated buffer
-    // ==========================================
     glDisable(GL_DEPTH_TEST);
 
     m_screenProgram->bind();
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_accumTex);
+    //    glBindTexture(GL_TEXTURE_2D, m_accumTex);
+
+    glBindTexture(GL_TEXTURE_2D, m_denoisedTex); 
     m_screenProgram->setUniformValue("tex", 0);
 
     glBindVertexArray(m_quadVAO);
@@ -329,7 +365,7 @@ void OpenGLWindow::doRayTrace()
     if ((m_accumFrame & 31) == 0) {
         qDebug() << "FrameIndex(accum)=" << m_accumFrame;
     }
-    // Final
+
     m_accumFrame++;
     update();
 }
@@ -394,9 +430,9 @@ void OpenGLWindow::paintGL()
 }
 void OpenGLWindow::loadShaders()
 {
-    // -------------------------------
+
     // RAYTRACING SHADER
-    // -------------------------------
+
     m_computeProgram = new QOpenGLShaderProgram();
     if (!m_computeProgram->addShaderFromSourceFile(
             QOpenGLShader::Compute, "src/shaders/raytrace.comp")) {
@@ -406,9 +442,9 @@ void OpenGLWindow::loadShaders()
         qWarning() << "Compute shader link error:" << m_computeProgram->log();
     }
 
-    // -------------------------------
-    // DENOISE SHADER   <--- AJOUT IMPORTANT
-    // -------------------------------
+
+    // DENOISE SHADER  
+
     m_denoiseProgram = new QOpenGLShaderProgram();
     if (!m_denoiseProgram->addShaderFromSourceFile(
             QOpenGLShader::Compute, "src/shaders/denoise.comp"))
@@ -420,9 +456,9 @@ void OpenGLWindow::loadShaders()
         qWarning() << "Denoise shader link error:" << m_denoiseProgram->log();
     }
 
-    // -------------------------------
+
     // SCREEN SHADER
-    // -------------------------------
+
     m_screenProgram = new QOpenGLShaderProgram();
     if (!m_screenProgram->addShaderFromSourceFile(
             QOpenGLShader::Vertex, "src/shaders/screen.vert"))
@@ -435,9 +471,8 @@ void OpenGLWindow::loadShaders()
     if (!m_screenProgram->link())
         qWarning() << "Screen program link error:" << m_screenProgram->log();
 
-    // -------------------------------
-    // RASTERIZATION PIPELINE SHADERS
-    // -------------------------------
+    // RASTERIZATION
+
     m_program = new QOpenGLShaderProgram();
     bool ok = m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "src/shaders/basic.vert");
     if (!ok) qWarning() << "Vertex shader compile error:" << m_program->log();

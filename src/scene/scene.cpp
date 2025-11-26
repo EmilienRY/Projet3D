@@ -159,7 +159,7 @@ void Scene::buildCornellBox()
     Material red;    red.color = QVector3D(0.65f,0.05f,0.05f);
     red.kd = 0.9f; red.ks = 0.0f; red.type=0;
     red.specularColor = QVector3D(1.0,1.0,1.0); red.shininess = 32;
-
+    red.type = 1;
     Material green;  green.color = QVector3D(0.12f,0.55f,0.15f);
     green.kd = 0.9f; green.ks = 0.0f; green.type=0;
     green.specularColor = QVector3D(1.0,1.0,1.0); green.shininess = 32;

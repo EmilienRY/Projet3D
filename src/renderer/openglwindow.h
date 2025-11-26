@@ -71,6 +71,7 @@ private:
     GLuint m_accumTex = 0;
     GLuint m_currentTex = 0;
     GLuint m_denoisedTex = 0;
+    GLuint m_gBufferTex = 0;
 
     int m_accumFrame = 0;
     int m_maxBounces = 4;

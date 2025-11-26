@@ -9,6 +9,7 @@ layout(local_size_x = 16, local_size_y = 16) in;
 // ACCUMULATION IMAGE
 // ---------------------
 layout(rgba32f, binding = 0) coherent uniform image2D imgAccum;
+layout(rgba32f, binding = 4) uniform writeonly image2D imgGbuffer;
 
 // ---------
 // TYPES
@@ -93,7 +94,8 @@ vec3 randomHemisphere(vec3 N, inout uint seed)
     float v = randf(seed);
 
     float phi = 2.0 * 3.14159265358979323846 * u;
-    float cosTheta = v;
+    
+    float cosTheta = sqrt(v);
     float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
 
     vec3 T = normalize(abs(N.x) > 0.1 ? cross(N, vec3(0,1,0)) : cross(N, vec3(1,0,0)));
@@ -296,7 +298,15 @@ void main()
             if (!trace(ro, rd, h))
             {
                 radiance += throughput * vec3(0.2, 0.3, 0.7);
+                
+                if (bounce == 0) {
+                    imageStore(imgGbuffer, px, vec4(0,0,0, 1000.0));
+                }
                 break;
+            }
+
+            if (bounce == 0) {
+                imageStore(imgGbuffer, px, vec4(h.normal, h.t));
             }
 
             // --- Miroir ---
@@ -345,7 +355,7 @@ void main()
                 float lightRadius = lights[li].lightRadius;
 
                 vec3 accumContribution = vec3(0.0);
-                int shadowSamples = 16;
+                int shadowSamples = 1;
 
                 for (int s = 0; s < shadowSamples; s++)
                 {
@@ -395,5 +405,7 @@ void main()
     }
 
     finalRadiance /= float(u_spp);
+    finalRadiance = min(finalRadiance, vec3(10.0));
+    
     imageStore(imgAccum, px, vec4(finalRadiance, 1.0));
 }

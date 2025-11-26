@@ -1,11 +1,15 @@
 #version 430
 layout(local_size_x=16, local_size_y=16) in;
 
-layout(rgba32f, binding=0) uniform readonly  image2D imgNoisy;   // new frame
-layout(rgba32f, binding=1) uniform writeonly image2D imgDenoised; // temp
-layout(rgba32f, binding=2) uniform coherent image2D imgAccum;    // accumulation
+layout(rgba32f, binding=0) uniform readonly  image2D imgNoisy;
+layout(rgba32f, binding=1) uniform writeonly image2D imgDenoised;
+layout(rgba32f, binding=2) uniform coherent image2D imgAccum;
+layout(rgba32f, binding=3) uniform readonly  image2D imgGbuffer;
+layout(rgba32f, binding=5) uniform readonly  image2D imgInputPass; // Pour les passes > 0
 
 uniform int u_frameIndex;
+uniform int u_stepSize;  // 1, 2, 4, 8...
+uniform int u_passIndex; // 0 = Accumulation, >0 = Juste filtrage
 
 float gaussian(float x, float sigma)
 {
@@ -19,48 +23,80 @@ void main()
 
     if (px.x >= size.x || px.y >= size.y) return;
 
-    vec3 center = imageLoad(imgNoisy, px).rgb;
+    vec3 centerColor;
 
-    vec3 sum = vec3(0);
-    float wsum = 0;
+    // accumulation
 
-    // ====== VERSION BOOSTÉE POUR PATH TRACING ======
-    int radius = 7;
-
-    for (int dy=-radius; dy<=radius; dy++)
-    for (int dx=-radius; dx<=radius; dx++)
+    if (u_passIndex == 0)
     {
-        ivec2 p = px + ivec2(dx,dy);
-        if (p.x<0||p.y<0||p.x>=size.x||p.y>=size.y)
-            continue;
+        vec3 noisy = imageLoad(imgNoisy, px).rgb;
+        vec3 accum = noisy;
 
-        vec3 c = imageLoad(imgNoisy, p).rgb;
-
-        // filtres plus permissifs
-        float ws = gaussian(length(vec2(dx,dy)), 3.0);
-        float wc = gaussian(length(c - center), 1.0);
-
-        float w = ws * wc;
-        sum += c * w;
-        wsum += w;
-    }
-
-    vec3 denoised = sum / max(wsum, 1e-6);
-
-    // ===== ACCUMULATION =====
-    if (u_frameIndex == 0)
-    {
-        imageStore(imgAccum, px, vec4(denoised,1));
+        if (u_frameIndex > 0)
+        {
+            vec3 prev = imageLoad(imgAccum, px).rgb;
+            float alpha = 1.0 / float(u_frameIndex + 1);
+            accum = mix(prev, noisy, alpha);
+        }
+        imageStore(imgAccum, px, vec4(accum, 1.0));
+        centerColor = accum;
     }
     else
     {
-        vec3 prev = imageLoad(imgAccum, px).rgb;
-
-        float alpha = 1.0 / float(u_frameIndex + 1);
-        vec3 accum = mix(prev, denoised, alpha);
-
-        imageStore(imgAccum, px, vec4(accum,1));
+        centerColor = imageLoad(imgInputPass, px).rgb;
     }
+
+    // denoise
+
+    vec3 center = centerColor;
+    vec4 centerG = imageLoad(imgGbuffer, px);
+    vec3 centerN = centerG.rgb;
+    float centerD = centerG.a;
+
+    vec3 sum = vec3(0);
+    float wsum = 0;
+    
+    float kernel[5] = float[](0.0625, 0.25, 0.375, 0.25, 0.0625);
+
+    for (int y = -2; y <= 2; y++)
+    {
+        for (int x = -2; x <= 2; x++)
+        {
+            ivec2 offset = ivec2(x, y) * u_stepSize;
+            ivec2 p = px + offset;
+
+            if (p.x<0||p.y<0||p.x>=size.x||p.y>=size.y) continue;
+
+            vec3 c;
+            if (u_passIndex == 0) c = imageLoad(imgAccum, p).rgb;
+            else                  c = imageLoad(imgInputPass, p).rgb;
+
+            vec4 g = imageLoad(imgGbuffer, p);
+            vec3 n = g.rgb;
+            float d = g.a;
+
+            float k = kernel[x+2] * kernel[y+2];
+
+            vec3 diff = c - center;
+            float dist = length(log(vec3(1.0)+c) - log(vec3(1.0)+center));
+
+            float sigmaColor = 0.5 * float(u_passIndex + 1); 
+            float wc = exp(-(dist*dist)/(2*sigmaColor*sigmaColor));
+
+            float wn = 1.0;
+            if (length(centerN) > 0.1 && length(n) > 0.1) {
+                 wn = pow(max(0.0, dot(n, centerN)), 32.0);
+            }
+
+            float wd = exp(-abs(d - centerD) / 1.0);
+
+            float w = k * wc * wn * wd;
+            sum += c * w;
+            wsum += w;
+        }
+    }
+
+    vec3 denoised = sum / max(wsum, 1e-6);
 
     imageStore(imgDenoised, px, vec4(denoised,1));
 }
