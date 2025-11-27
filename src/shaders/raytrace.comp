@@ -534,15 +534,20 @@ void glass(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {
 
     float k = 1.0 - eta * eta * (1.0 - cosi * cosi);
 
-    if (k < 0.0) rd = reflect(I, N);
-    else rd = eta * I - (eta * cosi + sqrt(k)) * N;
+    if (k < 0.0) {
+        rd = reflect(I, N);
+        ro = h.pos + N * 1e-3;
+    }
+    else {
+        rd = eta * I - (eta * cosi + sqrt(k)) * N;
+        ro = h.pos - N * 1e-3;
+    }
 
-    ro = h.pos + N * 1e-3;
     throughput *= vec3(1.0);
 }
 
 // ------
-// MAIN
+// MAIN (PATH TRACING - ORIGINAL)
 // ------
 
 void main()
