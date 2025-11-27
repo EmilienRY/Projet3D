@@ -23,9 +23,11 @@ public:
 
     void addMaterial(const Material& m);
     bool isSphere=false;
+    bool isSquare=false;
 
     QVector<Vertex> m_Vertices;
     QVector<unsigned int> m_Indices;
+    int nbTriangles;
 
 private:
     QOpenGLBuffer m_vbo;

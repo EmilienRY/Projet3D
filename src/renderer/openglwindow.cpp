@@ -145,6 +145,10 @@ void OpenGLWindow::uploadSceneToGPU()
     std::vector<GpuSphere> spheres;
     std::vector<GpuSquare> squares;
     std::vector<GpuLight>  lights;
+    std::vector<GpuMesh>  meshes;
+    std::vector<GpuTriangle>  triangles;
+
+    int offsetTriangle = 0;
 
     // envoie des meshs
 
@@ -176,7 +180,7 @@ void OpenGLWindow::uploadSceneToGPU()
             s.Material_type=mesh->material().type;
             spheres.push_back(s);
         }
-        else
+        else if (mesh->isSquare)
         {
             GpuSquare sq;
 
@@ -200,11 +204,59 @@ void OpenGLWindow::uploadSceneToGPU()
             sq.specularB = mesh->material().specularColor.z();
             sq.shininess=mesh->material().shininess;
             sq.Material_type=mesh->material().type;
+
+            sq.pad1=0.0f;
+            sq.pad2=0.0f;
+            sq.pad3=0.0f;
             sq.pad4=0;
             sq.pad5=0;
             sq.pad6=0;
 
             squares.push_back(sq);
+        }
+        else{
+            GpuMesh gm;
+            gm.Material_type=mesh->material().type;
+            gm.triCount=mesh->nbTriangles;
+            gm.triOffset=offsetTriangle;
+            gm.pad0=0;
+
+            //qDebug() << "Nb triangle " << mesh->nbTriangles;
+
+            for(int i = 0; i<mesh->nbTriangles*3; i+=3){
+                //qDebug() << "Triangle " << i/3;
+
+                GpuTriangle gt;
+                QVector3D A = mesh->modelMatrix.map(mesh->m_Vertices[mesh->m_Indices[i]].pos);
+                QVector3D B = mesh->modelMatrix.map(mesh->m_Vertices[mesh->m_Indices[i+1]].pos);
+                QVector3D C = mesh->modelMatrix.map(mesh->m_Vertices[mesh->m_Indices[i+2]].pos);
+
+                QVector3D N = QVector3D::crossProduct(B - A, C - A);
+                N.normalize();
+
+
+                gt.ax = A.x(); gt.ay = A.y(); gt.az = A.z(); gt.pad0=0.0f;
+                gt.bx = B.x(); gt.by = B.y(); gt.bz = B.z(); gt.pad1=0.0f;
+                gt.cx = C.x(); gt.cy = C.y(); gt.cz = C.z(); gt.pad2=0.0f;
+
+                gt.nx = N.x(); gt.ny = N.y(); gt.nz = N.z(); gt.pad3=0.0f;
+
+                gt.diffuseR = mesh->material().color.x();
+                gt.diffuseG = mesh->material().color.y();
+                gt.diffuseB = mesh->material().color.z();
+                gt.kd = mesh->material().kd;
+                gt.ks = mesh->material().ks;
+                gt.specularR = mesh->material().specularColor.x();
+                gt.specularG = mesh->material().specularColor.y();
+                gt.specularB = mesh->material().specularColor.z();
+                gt.shininess=mesh->material().shininess;
+                gt.pad4=0.0f; gt.pad5=0.0f; gt.pad6=0.0f;
+
+                triangles.push_back(gt);
+
+            }
+            offsetTriangle += mesh->nbTriangles;
+            meshes.push_back(gm);
         }
     }
 
@@ -220,13 +272,19 @@ void OpenGLWindow::uploadSceneToGPU()
         g.r = l.color.x();
         g.g = l.color.y();
         g.b = l.color.z();
+        g.pad0 = 0.0f;
         g.lightRadius = l.lightRadius;
+        g.pad1 = 0.0f;
+        g.pad2 = 0.0f;
+        g.pad3 = 0.0f;
         lights.push_back(g);
     }
 
     m_gpuSphereCount = spheres.size();
     m_gpuSquareCount = squares.size();
     m_gpuLightCount  = lights.size();
+    m_gpuTriangleCount = triangles.size();
+    m_gpuMeshCount = meshes.size();
 
     if (!m_ssboSpheres) glGenBuffers(1, &m_ssboSpheres);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboSpheres);
@@ -245,6 +303,18 @@ void OpenGLWindow::uploadSceneToGPU()
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuSquare)*squares.size(),
                  squares.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_squaresSSBO);
+
+    if (!m_ssboMesh) glGenBuffers(1, &m_ssboMesh);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboMesh);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuMesh)*meshes.size(),
+                 meshes.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_ssboMesh);
+
+    if (!m_ssboTri) glGenBuffers(1, &m_ssboTri);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboTri);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuTriangle)*triangles.size(),
+                 triangles.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_ssboTri);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
@@ -293,6 +363,8 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->setUniformValue("u_width",        width());
     m_computeProgram->setUniformValue("u_height",       height());
     m_computeProgram->setUniformValue("u_frameIndex",   m_accumFrame);
+    m_computeProgram->setUniformValue("u_triangleCount",  m_gpuTriangleCount);
+    m_computeProgram->setUniformValue("u_meshCount",  m_gpuMeshCount);
 
     int currentSpp  = 1;
     m_computeProgram->setUniformValue("u_spp", currentSpp);

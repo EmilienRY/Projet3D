@@ -66,6 +66,8 @@ private:
     GLuint m_ssboSpheres = 0;
     GLuint m_ssboLights  = 0;
     GLuint m_squaresSSBO = 0;
+    GLuint m_ssboTri = 0;
+    GLuint m_ssboMesh = 0;
 
     GLuint m_quadVAO = 0;
     GLuint m_accumTex = 0;
@@ -83,6 +85,8 @@ private:
     int m_gpuSphereCount = 0;
     int m_gpuLightCount = 0;
     int m_gpuSquareCount = 0;
+    int m_gpuTriangleCount = 0;
+    int m_gpuMeshCount = 0;
 
 
 

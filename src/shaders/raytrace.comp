@@ -21,7 +21,7 @@ struct Sphere {
     vec3 specular;  float ks;
     float shininess;
     float pad1, pad2, pad3;
-    int Material_type;
+    int Material_type, pad4, pad5, pad6;
 };
 
 struct Square {
@@ -34,13 +34,32 @@ struct Square {
     vec3 specular;  float ks;
     float shininess;
     float pad1, pad2, pad3;
-    int Material_type;
+    int Material_type, pad4, pad5, pad6;
 };
+
+struct Mesh {
+    int Material_type;
+    int triOffset;
+    int triCount;
+    int pad0;
+};
+
+struct Triangle {
+    vec3 v0; float pad0;
+    vec3 v1; float pad1;
+    vec3 v2; float pad2;
+    vec3 normal; float pad3;
+    vec3 diffuse;   float kd;
+    vec3 specular;  float ks;
+    float shininess;
+    float pad4, pad5, pad6;
+};
+
 
 struct Light {
     vec4 posIntensity;
     vec4 color;
-    float lightRadius;
+    float lightRadius, pad1, pad2, pad3;
 };
 
 // --------
@@ -49,6 +68,8 @@ struct Light {
 layout(std430, binding = 1) buffer Spheres { Sphere spheres[]; };
 layout(std430, binding = 2) buffer Lights  { Light  lights[];  };
 layout(std430, binding = 3) buffer Squares { Square squares[]; };
+layout(std430, binding = 4) buffer Meshes { Mesh meshes[]; };
+layout(std430, binding = 5) buffer Triangles { Triangle triangles[]; };
 
 // -----------
 // UNIFORMS
@@ -65,6 +86,8 @@ layout(location = 8) uniform int u_height;
 layout(location = 9) uniform int u_squareCount;
 layout(location = 10) uniform int u_frameIndex;
 layout(location = 11) uniform int u_spp;
+layout(location = 12) uniform int u_triangleCount;
+layout(location = 13) uniform int u_meshCount;
 
 // -------
 // RNG
@@ -206,6 +229,51 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
 }
 
 // ---------
+// Intersection des triangles
+// ---------
+
+bool intersectTri(vec3 ro, vec3 rd, Triangle tri,
+                    out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess){
+    Hit result;
+
+    vec3 v0 = tri.v0;
+    vec3 v1 = tri.v1;
+    vec3 v2 = tri.v2;
+
+    vec3 e1 = v1 - v0;
+    vec3 e2 = v2 - v0;
+
+    vec3 pvec = cross(rd, e2);
+    float det = dot(e1, pvec);
+    float detInv = 1.0/det;
+
+    // Si le rayon est parallèle au plan du triangle ou det proche de 0 -> pas d'intersection
+    if (abs(det) < 1e-6) return false;
+
+    vec3 tvec = ro - v0;
+    float u = dot(tvec, pvec) * detInv;
+    if (u < 0.0 || u > 1.0) return false;
+
+    vec3 qvec = cross(tvec, e1);
+    float v = dot(rd, qvec) * detInv;
+    if (v < 0.0 || u + v > 1.0) return false;
+
+    float t = dot(e2, qvec) * detInv;
+    if (t <= 1e-4) return false;
+
+    tHit = t;
+    normalOut = tri.normal;
+    diffuse = tri.diffuse;
+    specular = tri.specular;
+    kd = tri.kd;
+    ks = tri.ks;
+    shininess = tri.shininess;
+
+    return true;
+}
+
+
+// ---------
 // TRACE
 // ---------
 bool trace(vec3 ro, vec3 rd, out Hit hit)
@@ -255,6 +323,32 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                 found = true;
             }
         }
+    }
+
+    for (int i = 0; i < u_meshCount; ++i) {
+        int mat = meshes[i].Material_type;
+        for (int j = meshes[i].triOffset; j < meshes[i].triCount; ++j) {
+            float t; vec3 n; vec3 diffuse;
+            float kd; float ks; float shininess;
+            vec3 specular;
+            if (intersectTri(ro, rd, triangles[j], t, n, diffuse, specular, kd, ks, shininess)) {
+                if (t < hit.t) {
+                    hit.t = t;
+                    hit.pos = ro + rd * t;
+                    hit.normal = n;
+
+                    hit.diffuse = triangles[j].diffuse;
+                    hit.kd = triangles[j].kd;
+                    hit.specular = triangles[j].specular;
+                    hit.ks = triangles[j].ks;
+                    hit.shininess = triangles[j].shininess;
+                    hit.Material_type = mat;
+
+                    found = true;
+                }
+            }
+        }
+
     }
 
     return found;
@@ -355,7 +449,7 @@ void main()
                 float lightRadius = lights[li].lightRadius;
 
                 vec3 accumContribution = vec3(0.0);
-                int shadowSamples = 1;
+                int shadowSamples = 8;
 
                 for (int s = 0; s < shadowSamples; s++)
                 {

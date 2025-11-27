@@ -2,8 +2,7 @@
 
 #include <QVector>
 #include "light.h"
-
-class Mesh;
+#include "mesh.h"
 
 class Scene
 {
@@ -18,6 +17,7 @@ public:
 
     void buildPlaneSphere();
     void buildCornellBox();
+    void loadOffFile(QString &fileName, QVector<Mesh::Vertex> &verts, QVector<unsigned int> &idx, int &faceCount);
 
 private:
     QVector<Mesh*> m_meshes;

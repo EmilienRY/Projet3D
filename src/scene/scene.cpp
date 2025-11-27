@@ -1,5 +1,6 @@
 #include "scene.h"
 #include "mesh.h"
+#include <QFile>
 
 Scene::Scene()
 {
@@ -102,6 +103,7 @@ void Scene::buildPlaneSphere()
     Mesh* plane = new Mesh();
     plane->addMaterial(m1);
     plane->initialize(verts, idx);
+    plane->isSquare=true;
     addMesh(plane);
 
     QVector<Mesh::Vertex> sVerts;
@@ -125,6 +127,30 @@ void Scene::buildPlaneSphere()
     sphere->modelMatrix.translate(0, 1, 0);
     sphere->isSphere=true;
     addMesh(sphere);
+
+    Mesh* suzanne = new Mesh();
+    QVector<Mesh::Vertex> meshVerts;
+    QVector<unsigned int> meshIdx;
+    int nbTriangle;
+    QString meshFile = "../../src/scene/suzanne.off";
+    loadOffFile(meshFile, meshVerts, meshIdx, nbTriangle);
+    // qDebug() << "Nombre triangle" << nbTriangle;
+    suzanne->nbTriangles=nbTriangle;
+    suzanne->initialize(meshVerts,meshIdx);
+    suzanne->modelMatrix.translate(-1, 1, 2);
+    suzanne->modelMatrix.scale(0.5);
+
+    Material cyan;
+    cyan.color=QVector3D(0,1,1);
+
+    cyan.kd = 1.;
+    cyan.ks = 0.3;
+    cyan.specularColor = QVector3D(1,1,1);
+    cyan.shininess = 32;
+    cyan.type=0;
+
+    suzanne->addMaterial(cyan);
+    addMesh(suzanne);
 
     Light l;
     l.position = QVector3D(2.0f, 4.0f, 2.0f);
@@ -183,6 +209,7 @@ void Scene::buildCornellBox()
         m->initialize(verts, idx);
         m->modelMatrix.setToIdentity();
         m->addMaterial(mat);
+        m->isSquare=true;
         addMesh(m);
     };
 
@@ -235,8 +262,69 @@ void Scene::buildCornellBox()
     l.position  = QVector3D(0, 2.8f, 0);
     l.color     = QVector3D(1.0,1.0,1.0);
     l.intensity = 10.0f;
-    l.lightRadius = 5.0f;
+    l.lightRadius = 1.1f;
 
     m_lights.append(l);
+}
+
+void Scene::loadOffFile(QString &fileName,
+                               QVector<Mesh::Vertex> &verts,
+                               QVector<unsigned int> &idx,
+                                int &faceCount)
+{
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Unable to open OFF file:" << fileName;
+    }
+
+    QTextStream in(&file);
+
+    QString header;
+    in >> header;
+    if (header != "OFF") {
+        qWarning() << "Invalid OFF file:" << fileName;
+    }
+
+    int vertexCount = 0;
+    int edgeCount = 0;
+    in >> vertexCount >> faceCount >> edgeCount;
+
+    if (vertexCount <= 0 || faceCount <= 0) {
+        qWarning() << "Invalid mesh size";
+    }
+
+    verts.clear();
+    idx.clear();
+
+    verts.reserve(vertexCount);
+    idx.reserve(faceCount * 3);
+
+    QVector3D defaultColor(1.0f, 1.0f, 1.0f);
+
+    std::vector<QVector3D> positions;
+    positions.reserve(vertexCount);
+
+    for (int i = 0; i < vertexCount; ++i) {
+        float x, y, z;
+        in >> x >> y >> z;
+        positions.emplace_back(x, y, z);
+    }
+
+    for (auto &p : positions)
+        verts.append({p, defaultColor});
+
+    for (int i = 0; i < faceCount; ++i) {
+        int n, a, b, c;
+        in >> n >> a >> b >> c;
+
+        if (n != 3) {
+            qWarning() << "Non triangular face encountered. Only triangles are supported!";
+        }
+
+        idx.append(static_cast<unsigned int>(a));
+        idx.append(static_cast<unsigned int>(b));
+        idx.append(static_cast<unsigned int>(c));
+    }
+    // qDebug() << "Nombre triangle" << faceCount;
 }
 
