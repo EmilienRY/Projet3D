@@ -24,8 +24,8 @@ private:
     void updateVectors();
 
     QVector3D m_pos;
-    float m_yaw;   // degrees
-    float m_pitch; // degrees
+    float m_yaw;
+    float m_pitch;
     QVector3D m_front;
     QVector3D m_right;
     QVector3D m_up;

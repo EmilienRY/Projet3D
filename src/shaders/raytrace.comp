@@ -44,17 +44,28 @@ struct Mesh {
     int pad0;
 };
 
-struct Triangle {
-    vec3 v0; float pad0;
-    vec3 v1; float pad1;
-    vec3 v2; float pad2;
-    vec3 normal; float pad3;
-    vec3 diffuse;   float kd;
-    vec3 specular;  float ks;
-    float shininess;
-    float pad4, pad5, pad6;
+struct BVHNode {
+    float minX, minY, minZ;
+    int rightChildOrPrim;
+    float maxX, maxY, maxZ;
+    int triangleCount;
 };
 
+struct TriangleIndexed {
+    uint v0, v1, v2, matIdx;
+};
+
+struct Vertex {
+    vec4 pos; // xyz, pad
+    vec4 normal; // xyz, pad
+};
+
+struct Material {
+    vec3 diffuse; float kd;
+    vec3 specular; float ks;
+    float shininess; float pad1, pad2;
+    int type; int pad4, pad5, pad6;
+};
 
 struct Light {
     vec4 posIntensity;
@@ -69,7 +80,10 @@ layout(std430, binding = 1) buffer Spheres { Sphere spheres[]; };
 layout(std430, binding = 2) buffer Lights  { Light  lights[];  };
 layout(std430, binding = 3) buffer Squares { Square squares[]; };
 layout(std430, binding = 4) buffer Meshes { Mesh meshes[]; };
-layout(std430, binding = 5) buffer Triangles { Triangle triangles[]; };
+layout(std430, binding = 5) buffer Triangles { TriangleIndexed triangles[]; };
+layout(std430, binding = 6) buffer BVHNodes { BVHNode nodes[]; };
+layout(std430, binding = 7) buffer Vertices { Vertex vertices[]; };
+layout(std430, binding = 8) buffer Materials { Material materials[]; };
 
 // -----------
 // UNIFORMS
@@ -90,7 +104,7 @@ layout(location = 12) uniform int u_triangleCount;
 layout(location = 13) uniform int u_meshCount;
 
 // -------
-// RNG
+// ALEA
 // -------
 uint hash_u(uint x)
 {
@@ -111,13 +125,14 @@ float randf(inout uint state)
 // -----------------------
 // hemisphere sampling
 // -----------------------
+
 vec3 randomHemisphere(vec3 N, inout uint seed)
 {
     float u = randf(seed);
     float v = randf(seed);
 
     float phi = 2.0 * 3.14159265358979323846 * u;
-    
+
     float cosTheta = sqrt(v);
     float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
 
@@ -135,7 +150,7 @@ vec3 sampleUniformSphere(inout uint seed)
 {
     float u = randf(seed);
     float v = randf(seed);
-    float z = 1.0 - 2.0 * u;                
+    float z = 1.0 - 2.0 * u;
     float phi = 2.0 * 3.14159265358979323846 * v;
     float r = sqrt(max(0.0, 1.0 - z * z));
     return vec3(r * cos(phi), r * sin(phi), z);
@@ -144,6 +159,7 @@ vec3 sampleUniformSphere(inout uint seed)
 // -------------
 // HIT STRUCT
 // -------------
+
 struct Hit {
     float t;
     vec3 pos;
@@ -175,7 +191,7 @@ bool intersectSphere(vec3 ro, vec3 rd, vec4 cR, out float t)
     float t1 = -b - sq;
     float t2 = -b + sq;
 
-    t = (t1 > 0.001) ? t1 : ((t2 > 0.001) ? t2 : -1.0);
+    t = (t1 > 1e-4) ? t1 : ((t2 > 1e-4) ? t2 : -1.0);
     return t > 0.0;
 }
 
@@ -192,7 +208,7 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
     if (abs(denom) < 1e-6) return false;
 
     float t = dot(A - ro, N) / denom;
-    if (t <= 0.001) return false;
+    if (t <= 1e-4) return false;
 
     vec3 P = ro + rd * t;
 
@@ -232,13 +248,12 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
 // Intersection des triangles
 // ---------
 
-bool intersectTri(vec3 ro, vec3 rd, Triangle tri,
-                    out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess){
-    Hit result;
+bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
+                    out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType){
 
-    vec3 v0 = tri.v0;
-    vec3 v1 = tri.v1;
-    vec3 v2 = tri.v2;
+    vec3 v0 = vertices[tri.v0].pos.xyz;
+    vec3 v1 = vertices[tri.v1].pos.xyz;
+    vec3 v2 = vertices[tri.v2].pos.xyz;
 
     vec3 e1 = v1 - v0;
     vec3 e2 = v2 - v0;
@@ -247,7 +262,6 @@ bool intersectTri(vec3 ro, vec3 rd, Triangle tri,
     float det = dot(e1, pvec);
     float detInv = 1.0/det;
 
-    // Si le rayon est parallèle au plan du triangle ou det proche de 0 -> pas d'intersection
     if (abs(det) < 1e-6) return false;
 
     vec3 tvec = ro - v0;
@@ -262,25 +276,139 @@ bool intersectTri(vec3 ro, vec3 rd, Triangle tri,
     if (t <= 1e-4) return false;
 
     tHit = t;
-    normalOut = tri.normal;
-    diffuse = tri.diffuse;
-    specular = tri.specular;
-    kd = tri.kd;
-    ks = tri.ks;
-    shininess = tri.shininess;
+
+    normalOut = normalize(cross(e1, e2));
+
+    Material mat = materials[tri.matIdx];
+    diffuse = mat.diffuse;
+    specular = mat.specular;
+    kd = mat.kd;
+    ks = mat.ks;
+    shininess = mat.shininess;
+    matType = mat.type;
 
     return true;
 }
 
+// ---------
+// AABB Intersection
+// ---------
+
+bool intersectAABB(vec3 ro, vec3 invRd, vec3 aabbMin, vec3 aabbMax, float tMin, float tMax) {
+    vec3 t0 = (aabbMin - ro) * invRd;
+    vec3 t1 = (aabbMax - ro) * invRd;
+
+    vec3 tPetit = min(t0, t1);
+    vec3 tGros  = max(t0, t1);
+
+    float tmin = max(tMin, max(tPetit.x, max(tPetit.y, tPetit.z)));
+    float tmax = min(tMax, min(tGros.x, min(tGros.y, tGros.z)));
+
+    return tmin <= tmax;
+}
+
+// -------
+// OMBRE
+// -------
+
+bool traceShadow(vec3 ro, vec3 rd, float maxDist)
+{
+    for (int i = 0; i < u_sphereCount; ++i)
+    {
+        float t;
+        if (intersectSphere(ro, rd, spheres[i].centerRadius, t)) {
+            if (t < maxDist) return true;
+        }
+    }
+
+    for (int i = 0; i < u_squareCount; ++i)
+    {
+        vec3 A = squares[i].a.xyz;
+        vec3 B = squares[i].b.xyz;
+        vec3 D = squares[i].d.xyz;
+        vec3 N = normalize(cross(B - A, D - A));
+        float denom = dot(N, rd);
+        if (abs(denom) > 1e-6) {
+            float t = dot(A - ro, N) / denom;
+            if (t > 1e-4 && t < maxDist) {
+                vec3 P = ro + rd * t;
+                vec3 C = squares[i].c.xyz;
+                if (dot(cross(B - A, P - A), N) >= 0.0 &&
+                    dot(cross(C - B, P - B), N) >= 0.0 &&
+                    dot(cross(A - C, P - C), N) >= 0.0) return true;
+
+                if (dot(cross(C - A, P - A), N) >= 0.0 &&
+                    dot(cross(D - C, P - C), N) >= 0.0 &&
+                    dot(cross(A - D, P - D), N) >= 0.0) return true;
+            }
+        }
+    }
+
+    if (u_triangleCount > 0) {
+        vec3 invRd = 1.0 / rd;
+        int stack[32];
+        int stackPtr = 0;
+        stack[stackPtr++] = 0; // Push root
+
+        while (stackPtr > 0) {
+            int nodeIdx = stack[--stackPtr];
+            BVHNode node = nodes[nodeIdx];
+
+            if (!intersectAABB(ro, invRd, vec3(node.minX, node.minY, node.minZ),
+                                          vec3(node.maxX, node.maxY, node.maxZ), 1e-4, maxDist)) {
+                continue;
+            }
+
+            if (node.triangleCount > 0) {
+                for (int i = 0; i < node.triangleCount; ++i) {
+                    int triIdx = node.rightChildOrPrim + i;
+                    TriangleIndexed tri = triangles[triIdx];
+
+                    vec3 v0 = vertices[tri.v0].pos.xyz;
+                    vec3 v1 = vertices[tri.v1].pos.xyz;
+                    vec3 v2 = vertices[tri.v2].pos.xyz;
+
+                    vec3 e1 = v1 - v0;
+                    vec3 e2 = v2 - v0;
+                    vec3 pvec = cross(rd, e2);
+                    float det = dot(e1, pvec);
+                    float detInv = 1.0/det;
+
+                    if (abs(det) > 1e-6) {
+                        vec3 tvec = ro - v0;
+                        float u = dot(tvec, pvec) * detInv;
+                        if (u >= 0.0 && u <= 1.0) {
+                            vec3 qvec = cross(tvec, e1);
+                            float v = dot(rd, qvec) * detInv;
+                            if (v >= 0.0 && u + v <= 1.0) {
+                                float t = dot(e2, qvec) * detInv;
+                                if (t > 1e-4 && t < maxDist) return true; // Early exit
+                            }
+                        }
+                    }
+                }
+            } else {
+                int leftChild = nodeIdx + 1;
+                int rightChild = node.rightChildOrPrim;
+                stack[stackPtr++] = rightChild;
+                stack[stackPtr++] = leftChild;
+            }
+        }
+    }
+
+    return false;
+}
 
 // ---------
 // TRACE
 // ---------
+
 bool trace(vec3 ro, vec3 rd, out Hit hit)
 {
     hit.t = 1e30;
     bool found = false;
 
+    // Spheres
     for (int i = 0; i < u_sphereCount; ++i)
     {
         float t;
@@ -303,6 +431,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
 
     }
 
+    // Squares
     for (int i = 0; i < u_squareCount; ++i)
     {
         float t; vec3 n; vec3 diffuse;
@@ -325,38 +454,97 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
         }
     }
 
-    for (int i = 0; i < u_meshCount; ++i) {
-        int mat = meshes[i].Material_type;
-        for (int j = meshes[i].triOffset; j < meshes[i].triCount; ++j) {
-            float t; vec3 n; vec3 diffuse;
-            float kd; float ks; float shininess;
-            vec3 specular;
-            if (intersectTri(ro, rd, triangles[j], t, n, diffuse, specular, kd, ks, shininess)) {
-                if (t < hit.t) {
-                    hit.t = t;
-                    hit.pos = ro + rd * t;
-                    hit.normal = n;
+    // BVH
+    if (u_triangleCount > 0) {
+        vec3 invRd = 1.0 / rd;
+        int stack[32];
+        int stackPtr = 0;
+        stack[stackPtr++] = 0;
 
-                    hit.diffuse = triangles[j].diffuse;
-                    hit.kd = triangles[j].kd;
-                    hit.specular = triangles[j].specular;
-                    hit.ks = triangles[j].ks;
-                    hit.shininess = triangles[j].shininess;
-                    hit.Material_type = mat;
+        while (stackPtr > 0) {
+            int nodeIdx = stack[--stackPtr];
+            BVHNode node = nodes[nodeIdx];
 
-                    found = true;
+            if (!intersectAABB(ro, invRd, vec3(node.minX, node.minY, node.minZ),
+                                          vec3(node.maxX, node.maxY, node.maxZ), 0.001, hit.t)) {
+                continue;
+            }
+
+            if (node.triangleCount > 0) {
+                for (int i = 0; i < node.triangleCount; ++i) {
+                    int triIdx = node.rightChildOrPrim + i;
+                    float t; vec3 n; vec3 diffuse;
+                    float kd; float ks; float shininess;
+                    vec3 specular;
+                    int matType;
+
+                    if (intersectTri(ro, rd, triangles[triIdx], t, n, diffuse, specular, kd, ks, shininess, matType)) {
+                        if (t < hit.t) {
+                            hit.t = t;
+                            hit.pos = ro + rd * t;
+                            hit.normal = n;
+                            hit.diffuse = diffuse;
+                            hit.kd = kd;
+                            hit.specular = specular;
+                            hit.ks = ks;
+                            hit.shininess = shininess;
+                            hit.Material_type = matType;
+                            found = true;
+                        }
+                    }
                 }
+            } else {
+                int leftChild = nodeIdx + 1;
+                int rightChild = node.rightChildOrPrim;
+
+                stack[stackPtr++] = rightChild;
+                stack[stackPtr++] = leftChild;
             }
         }
-
     }
 
     return found;
 }
 
-// --------------------
-// MAIN RAY TRACER
-// --------------------
+// ------
+// MATERIALS
+// ------
+
+void mirror(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {
+    rd = reflect(rd, h.normal);
+    ro = h.pos + h.normal * 1e-3;
+    throughput *= vec3(1.0);
+}
+
+void glass(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {
+    float n1 = 1.0;
+    float n2 = 1.5;
+    float eta = n1 / n2;
+
+    vec3 I = normalize(rd);
+    vec3 N = h.normal;
+    float cosi = clamp(dot(I, N), -1.0, 1.0);
+
+    if (cosi > 0.0) {
+        N = -N;
+        float tmp = n1; n1 = n2; n2 = tmp;
+        eta = n1 / n2;
+        cosi = -cosi;
+    }
+
+    float k = 1.0 - eta * eta * (1.0 - cosi * cosi);
+
+    if (k < 0.0) rd = reflect(I, N);
+    else rd = eta * I - (eta * cosi + sqrt(k)) * N;
+
+    ro = h.pos + N * 1e-3;
+    throughput *= vec3(1.0);
+}
+
+// ------
+// MAIN
+// ------
+
 void main()
 {
     ivec2 px = ivec2(gl_GlobalInvocationID.xy);
@@ -383,7 +571,7 @@ void main()
 
         vec3 throughput = vec3(1.0);
         vec3 radiance = vec3(0.0);
-        const int MAX_BOUNCES = 10;
+        const int MAX_BOUNCES = 5;
 
         for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
         {
@@ -392,7 +580,7 @@ void main()
             if (!trace(ro, rd, h))
             {
                 radiance += throughput * vec3(0.2, 0.3, 0.7);
-                
+
                 if (bounce == 0) {
                     imageStore(imgGbuffer, px, vec4(0,0,0, 1000.0));
                 }
@@ -405,36 +593,13 @@ void main()
 
             // --- Miroir ---
             if (h.Material_type == 1) {
-                rd = reflect(rd, h.normal);
-                ro = h.pos + h.normal * 1e-4;
-                throughput *= vec3(1.0);
+                mirror(h, ro, rd, throughput);
                 continue;
             }
 
-            // --- Verre / Réfraction ---
+            // --- Verre ---
             if (h.Material_type == 2) {
-                float n1 = 1.0;
-                float n2 = 1.5;
-                float eta = n1 / n2;
-
-                vec3 I = normalize(rd);
-                vec3 N = h.normal;
-                float cosi = clamp(dot(I, N), -1.0, 1.0);
-
-                if (cosi > 0.0) {
-                    N = -N;
-                    float tmp = n1; n1 = n2; n2 = tmp;
-                    eta = n1 / n2;
-                    cosi = -cosi;
-                }
-
-                float k = 1.0 - eta * eta * (1.0 - cosi * cosi);
-
-                if (k < 0.0) rd = reflect(I, N);
-                else rd = eta * I - (eta * cosi + sqrt(k)) * N;
-
-                ro = h.pos + N * 1e-4;
-                throughput *= vec3(1.0);
+                glass(h, ro, rd, throughput);
                 continue;
             }
 
@@ -449,7 +614,7 @@ void main()
                 float lightRadius = lights[li].lightRadius;
 
                 vec3 accumContribution = vec3(0.0);
-                int shadowSamples = 8;
+                int shadowSamples = 1;
 
                 for (int s = 0; s < shadowSamples; s++)
                 {
@@ -460,9 +625,8 @@ void main()
                     float distSample = length(toLight);
                     vec3 Ls = toLight / distSample;
 
-                    Hit block2;
-                    bool hitSomething = trace(h.pos + h.normal * 1e-4, Ls, block2);
-                    bool visible = !(hitSomething && block2.t < distSample - 1e-4);
+                    bool hitSomething = traceShadow(h.pos + h.normal * 1e-3, Ls, distSample - 1e-3);
+                    bool visible = !hitSomething;
 
                     if (visible)
                     {
@@ -491,7 +655,7 @@ void main()
                 throughput /= p;
             }
 
-            ro = h.pos + h.normal * 1e-4;
+            ro = h.pos + h.normal * 1e-3;
             rd = randomHemisphere(h.normal, sseed);
         }
 
@@ -500,6 +664,6 @@ void main()
 
     finalRadiance /= float(u_spp);
     finalRadiance = min(finalRadiance, vec3(10.0));
-    
+
     imageStore(imgAccum, px, vec4(finalRadiance, 1.0));
 }

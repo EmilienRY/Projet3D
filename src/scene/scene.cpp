@@ -132,9 +132,9 @@ void Scene::buildPlaneSphere()
     QVector<Mesh::Vertex> meshVerts;
     QVector<unsigned int> meshIdx;
     int nbTriangle;
-    QString meshFile = "../../src/scene/suzanne.off";
+    QString meshFile = "../../meshes/suzanne.off";
     loadOffFile(meshFile, meshVerts, meshIdx, nbTriangle);
-    // qDebug() << "Nombre triangle" << nbTriangle;
+
     suzanne->nbTriangles=nbTriangle;
     suzanne->initialize(meshVerts,meshIdx);
     suzanne->modelMatrix.translate(-1, 1, 2);
@@ -151,6 +151,32 @@ void Scene::buildPlaneSphere()
 
     suzanne->addMaterial(cyan);
     addMesh(suzanne);
+
+    Mesh* suzanne2 = new Mesh();
+    QVector<Mesh::Vertex> meshVerts2;
+    QVector<unsigned int> meshIdx2;
+    int nbTriangle2;
+    QString meshFile2 = "../../meshes/suzanne.off";
+    loadOffFile(meshFile2, meshVerts2, meshIdx2, nbTriangle2);
+
+    suzanne2->nbTriangles=nbTriangle2;
+    suzanne2->initialize(meshVerts2,meshIdx2);
+    suzanne2->modelMatrix.translate(1, 1, 2);
+    suzanne2->modelMatrix.scale(0.5);
+
+    Material cyan2;
+    cyan2.color=QVector3D(1,0,0);
+
+    cyan2.kd = 0.7;
+    cyan2.ks = 0.7;
+    cyan2.specularColor = QVector3D(1,1,1);
+    cyan2.shininess = 32;
+    cyan2.type=0;
+
+    suzanne2->addMaterial(cyan2);
+    addMesh(suzanne2);
+
+
 
     Light l;
     l.position = QVector3D(2.0f, 4.0f, 2.0f);
@@ -224,27 +250,55 @@ void Scene::buildCornellBox()
     QVector<unsigned int> sIdx;
     generateSphereMesh(1.0f, 20, 20, sVerts, sIdx);
 
-    Mesh* s1 = new Mesh();
-    s1->isSphere = true;
-    s1->initialize(sVerts, sIdx);
-    //s1->modelMatrix.setToIdentity();
-    s1->modelMatrix.translate(1.0f, -2.0f, 0.5f);
+    // Mesh* s1 = new Mesh();
+    // s1->isSphere = true;
+    // s1->initialize(sVerts, sIdx);
+    // //s1->modelMatrix.setToIdentity();
+    // s1->modelMatrix.translate(1.0f, -2.0f, 0.5f);
 
-    Material mirror;
-    mirror.color = QVector3D(0.9f, 0.2f, 0.2f);
-    mirror.kd = 0.8f;
-    mirror.ks = 0.2f;
-    mirror.specularColor = QVector3D(1.0,1.0,1.0);
-    mirror.shininess = 64;
-    mirror.type = 1;
+    // Material mirror;
+    // mirror.color = QVector3D(0.9f, 0.2f, 0.2f);
+    // mirror.kd = 0.8f;
+    // mirror.ks = 0.2f;
+    // mirror.specularColor = QVector3D(1.0,1.0,1.0);
+    // mirror.shininess = 64;
+    // mirror.type = 1;
 
-    s1->addMaterial(mirror);
-    addMesh(s1);
+    // s1->addMaterial(mirror);
+    // addMesh(s1);
+
+
+
+
+
+
+    Mesh* suzanne = new Mesh();
+    QVector<Mesh::Vertex> meshVerts;
+    QVector<unsigned int> meshIdx;
+    int nbTriangle;
+    QString meshFile = "../../meshes/suzanne.off";
+    loadOffFile(meshFile, meshVerts, meshIdx, nbTriangle);
+
+    suzanne->nbTriangles=nbTriangle;
+    suzanne->initialize(meshVerts,meshIdx);
+    suzanne->modelMatrix.translate(1.0f, -2.0f, 0.5f);
+    suzanne->modelMatrix.scale(0.5);
+
+    Material cyan;
+    cyan.color=QVector3D(0,1,1);
+
+    cyan.kd = 1.;
+    cyan.ks = 0.3;
+    cyan.specularColor = QVector3D(1,1,1);
+    cyan.shininess = 32;
+    cyan.type=1;
+
+    suzanne->addMaterial(cyan);
+    addMesh(suzanne);
 
     Mesh* s2 = new Mesh();
     s2->isSphere = true;
     s2->initialize(sVerts, sIdx);
-    //s2->modelMatrix.setToIdentity();
     s2->modelMatrix.translate(-1.0f, -2.f, -1.0f);
 
     Material mate;

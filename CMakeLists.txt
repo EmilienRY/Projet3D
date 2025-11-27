@@ -19,7 +19,8 @@ qt_add_executable(appRayTracingGPU
     src/renderer/gpu_stucts.h
     src/shaders/screen.frag
     src/shaders/screen.vert
-    src/shaders/save.txt)
+    src/shaders/save.txt
+    src/renderer/bvh.h src/renderer/bvh.cpp)
 
 # --- Définir les fichiers source
 target_sources(appRayTracingGPU PRIVATE

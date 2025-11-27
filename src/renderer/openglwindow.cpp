@@ -37,6 +37,8 @@ void OpenGLWindow::changeScene()
         m_scene->clear();
         m_scene->buildCornellBox();
     }
+    uploadSceneToGPU();
+    resetAccumulation();
     doneCurrent();
     update();
 }
@@ -92,6 +94,7 @@ void OpenGLWindow::initializeGL()
     m_scene->buildPlaneSphere();
 
     loadShaders();
+    uploadSceneToGPU();
 
     m_frameTimer.start();
     m_lastTimeMs = m_frameTimer.elapsed();
@@ -146,11 +149,12 @@ void OpenGLWindow::uploadSceneToGPU()
     std::vector<GpuSquare> squares;
     std::vector<GpuLight>  lights;
     std::vector<GpuMesh>  meshes;
-    std::vector<GpuTriangle>  triangles;
 
-    int offsetTriangle = 0;
+    std::vector<GpuVertex> gpuVertices;
+    std::vector<GpuTriangleIndexed> gpuIndices;
+    std::vector<GpuMaterial> gpuMaterials;
 
-    // envoie des meshs
+    std::vector<Mesh*> triangleMeshes;
 
     for (Mesh* mesh : m_scene->meshes())
     {
@@ -215,52 +219,44 @@ void OpenGLWindow::uploadSceneToGPU()
             squares.push_back(sq);
         }
         else{
-            GpuMesh gm;
-            gm.Material_type=mesh->material().type;
-            gm.triCount=mesh->nbTriangles;
-            gm.triOffset=offsetTriangle;
-            gm.pad0=0;
-
-            //qDebug() << "Nb triangle " << mesh->nbTriangles;
-
-            for(int i = 0; i<mesh->nbTriangles*3; i+=3){
-                //qDebug() << "Triangle " << i/3;
-
-                GpuTriangle gt;
-                QVector3D A = mesh->modelMatrix.map(mesh->m_Vertices[mesh->m_Indices[i]].pos);
-                QVector3D B = mesh->modelMatrix.map(mesh->m_Vertices[mesh->m_Indices[i+1]].pos);
-                QVector3D C = mesh->modelMatrix.map(mesh->m_Vertices[mesh->m_Indices[i+2]].pos);
-
-                QVector3D N = QVector3D::crossProduct(B - A, C - A);
-                N.normalize();
-
-
-                gt.ax = A.x(); gt.ay = A.y(); gt.az = A.z(); gt.pad0=0.0f;
-                gt.bx = B.x(); gt.by = B.y(); gt.bz = B.z(); gt.pad1=0.0f;
-                gt.cx = C.x(); gt.cy = C.y(); gt.cz = C.z(); gt.pad2=0.0f;
-
-                gt.nx = N.x(); gt.ny = N.y(); gt.nz = N.z(); gt.pad3=0.0f;
-
-                gt.diffuseR = mesh->material().color.x();
-                gt.diffuseG = mesh->material().color.y();
-                gt.diffuseB = mesh->material().color.z();
-                gt.kd = mesh->material().kd;
-                gt.ks = mesh->material().ks;
-                gt.specularR = mesh->material().specularColor.x();
-                gt.specularG = mesh->material().specularColor.y();
-                gt.specularB = mesh->material().specularColor.z();
-                gt.shininess=mesh->material().shininess;
-                gt.pad4=0.0f; gt.pad5=0.0f; gt.pad6=0.0f;
-
-                triangles.push_back(gt);
-
-            }
-            offsetTriangle += mesh->nbTriangles;
-            meshes.push_back(gm);
+            triangleMeshes.push_back(mesh);
         }
     }
 
-    //  envoie des lumières
+    m_bvh.build(triangleMeshes);
+    const auto& bvhNodes = m_bvh.getGPUNodes();
+    const auto& sortedTriangles = m_bvh.getTriangles();
+    const auto& bvhVertices = m_bvh.getVertices();
+    const auto& bvhMaterials = m_bvh.getMaterials();
+
+    for (const auto& v : bvhVertices) {
+        GpuVertex gv;
+        gv.px = v.pos.x(); gv.py = v.pos.y(); gv.pz = v.pos.z(); gv.pad0 = 0;
+        gv.nx = v.normal.x(); gv.ny = v.normal.y(); gv.nz = v.normal.z(); gv.pad1 = 0;
+        gpuVertices.push_back(gv);
+    }
+
+    for (const auto& m : bvhMaterials) {
+        GpuMaterial gm;
+        gm.diffuseR = m.diffuse.x(); gm.diffuseG = m.diffuse.y(); gm.diffuseB = m.diffuse.z();
+        gm.kd = m.kd;
+        gm.specularR = m.specular.x(); gm.specularG = m.specular.y(); gm.specularB = m.specular.z();
+        gm.ks = m.ks;
+        gm.shininess = m.shininess;
+        gm.type = m.type;
+        gm.pad1=0; gm.pad2=0;
+        gpuMaterials.push_back(gm);
+    }
+
+    for (const auto& tri : sortedTriangles) {
+        GpuTriangleIndexed gti;
+        gti.v0 = tri.idx0;
+        gti.v1 = tri.idx1;
+        gti.v2 = tri.idx2;
+        gti.matIdx = tri.matIdx;
+        gpuIndices.push_back(gti);
+    }
+
     for (auto &l : m_scene->lights())
     {
         GpuLight g;
@@ -283,38 +279,64 @@ void OpenGLWindow::uploadSceneToGPU()
     m_gpuSphereCount = spheres.size();
     m_gpuSquareCount = squares.size();
     m_gpuLightCount  = lights.size();
-    m_gpuTriangleCount = triangles.size();
+    m_gpuTriangleCount = gpuIndices.size();
     m_gpuMeshCount = meshes.size();
 
+    //envoie des spheres
     if (!m_ssboSpheres) glGenBuffers(1, &m_ssboSpheres);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboSpheres);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuSphere)*spheres.size(),
                  spheres.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_ssboSpheres);
 
+    //envoie lumières
     if (!m_ssboLights) glGenBuffers(1, &m_ssboLights);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboLights);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuLight)*lights.size(),
                  lights.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_ssboLights);
 
+    //envoie square
     if (!m_squaresSSBO) glGenBuffers(1, &m_squaresSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_squaresSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuSquare)*squares.size(),
                  squares.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_squaresSSBO);
 
+    //envoie mesh (faut voir pour le remove)
     if (!m_ssboMesh) glGenBuffers(1, &m_ssboMesh);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboMesh);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuMesh)*meshes.size(),
                  meshes.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_ssboMesh);
 
-    if (!m_ssboTri) glGenBuffers(1, &m_ssboTri);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboTri);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuTriangle)*triangles.size(),
-                 triangles.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_ssboTri);
+    // envoie des indices des sommets des triangles
+    if (!m_ssboIndices) glGenBuffers(1, &m_ssboIndices);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboIndices);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuTriangleIndexed)*gpuIndices.size(),
+                 gpuIndices.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_ssboIndices);
+
+    // envoie des noeuds de BVH
+    if (!m_ssboBVHNodes) glGenBuffers(1, &m_ssboBVHNodes);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboBVHNodes);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GPUBVHNode)*bvhNodes.size(),
+                 bvhNodes.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, m_ssboBVHNodes);
+
+    // envoie vertices
+    if (!m_ssboVertices) glGenBuffers(1, &m_ssboVertices);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboVertices);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuVertex)*gpuVertices.size(),
+                 gpuVertices.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, m_ssboVertices);
+
+    // envoie materials
+    if (!m_ssboMaterials) glGenBuffers(1, &m_ssboMaterials);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboMaterials);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GpuMaterial)*gpuMaterials.size(),
+                 gpuMaterials.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, m_ssboMaterials);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
@@ -344,12 +366,10 @@ void OpenGLWindow::doRayTrace()
         m_lastCamUp    = m_camera.up();
     }
 
-    uploadSceneToGPU();
-
     int gx = (width()+15)/16;
     int gy = (height()+15)/16;
 
-    // RAYTRACE 
+    // RAYTRACE
     m_computeProgram->bind();
 
     m_computeProgram->setUniformValue("u_sphereCount",  m_gpuSphereCount);
@@ -377,7 +397,7 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->release();
 
 
-    // DENOISE + ACCUMULATION 
+    // DENOISE + ACCUMULATION
 
     m_denoiseProgram->bind();
     m_denoiseProgram->setUniformValue("u_frameIndex", m_accumFrame);
@@ -391,7 +411,7 @@ void OpenGLWindow::doRayTrace()
         m_denoiseProgram->setUniformValue("u_passIndex", i);
 
         glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-        
+
         glBindImageTexture(2, m_accumTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
         glBindImageTexture(3, m_gBufferTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
@@ -423,9 +443,8 @@ void OpenGLWindow::doRayTrace()
 
     m_screenProgram->bind();
     glActiveTexture(GL_TEXTURE0);
-    //    glBindTexture(GL_TEXTURE_2D, m_accumTex);
 
-    glBindTexture(GL_TEXTURE_2D, m_denoisedTex); 
+    glBindTexture(GL_TEXTURE_2D, m_denoisedTex);
     m_screenProgram->setUniformValue("tex", 0);
 
     glBindVertexArray(m_quadVAO);
@@ -515,7 +534,7 @@ void OpenGLWindow::loadShaders()
     }
 
 
-    // DENOISE SHADER  
+    // DENOISE SHADER
 
     m_denoiseProgram = new QOpenGLShaderProgram();
     if (!m_denoiseProgram->addShaderFromSourceFile(
@@ -709,11 +728,16 @@ void OpenGLWindow::loadOffFile(const QString &fileName,
 void OpenGLWindow::openOffMesh(const QVector<Mesh::Vertex> &verts,
                                const QVector<unsigned int> &idx)
 {
+    makeCurrent();
     Mesh* mesh = new Mesh();
     mesh->initialize(verts, idx);
     mesh->modelMatrix.setToIdentity();
 
     m_scene->addMesh(mesh);
+    uploadSceneToGPU();
+    resetAccumulation();
+    doneCurrent();
+    update();
 }
 
 

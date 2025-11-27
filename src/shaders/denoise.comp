@@ -8,8 +8,8 @@ layout(rgba32f, binding=3) uniform readonly  image2D imgGbuffer;
 layout(rgba32f, binding=5) uniform readonly  image2D imgInputPass; // Pour les passes > 0
 
 uniform int u_frameIndex;
-uniform int u_stepSize;  // 1, 2, 4, 8...
-uniform int u_passIndex; // 0 = Accumulation, >0 = Juste filtrage
+uniform int u_stepSize;
+uniform int u_passIndex;
 
 float gaussian(float x, float sigma)
 {

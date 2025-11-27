@@ -1,5 +1,20 @@
 #pragma once
 
+struct GpuMaterial {
+    float diffuseR, diffuseG, diffuseB, kd;
+    float specularR, specularG, specularB, ks;
+    float shininess; float pad1, pad2; int type;
+};
+
+struct GpuVertex {
+    float px, py, pz, pad0;
+    float nx, ny, nz, pad1;
+};
+
+struct GpuTriangleIndexed {
+    unsigned int v0, v1, v2, matIdx;
+};
+
 struct GpuSphere {
     float cx, cy, cz, radius;
     float diffuseR, diffuseG, diffuseB, kd;
@@ -7,23 +22,19 @@ struct GpuSphere {
     float shininess; float pad1, pad2, pad3;
     int Material_type;
     int pad4, pad5, pad6;
-
 };
 
 struct GpuMesh {
     int Material_type, triOffset, triCount, pad0;
 };
 
-struct GpuTriangle {
-    float ax, ay, az, pad0;
-    float bx, by, bz, pad1;
-    float cx, cy, cz, pad2;
-    float nx, ny, nz, pad3;
-    float diffuseR, diffuseG, diffuseB, kd;
-    float specularR, specularG, specularB, ks;
-    float shininess; float pad4, pad5, pad6;
-};
+struct GPUBVHNode {
+    float minX, minY, minZ;
+    int rightChildOrPrim;
 
+    float maxX, maxY, maxZ;
+    int triangleCount;
+};
 
 struct GpuSquare {
     float ax, ay, az, padA;
@@ -34,7 +45,6 @@ struct GpuSquare {
     float specularR, specularG, specularB, ks;
     float shininess, pad1, pad2, pad3;
     int Material_type, pad4, pad5, pad6;
-
 };
 
 

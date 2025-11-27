@@ -11,6 +11,7 @@
 #include "scene/mesh.h"
 #include "renderer/camera.h"
 #include "scene/scene.h"
+#include "renderer/bvh.h"
 
 class OpenGLWindow : public QOpenGLWindow, protected QOpenGLFunctions_4_5_Core
 {
@@ -66,8 +67,12 @@ private:
     GLuint m_ssboSpheres = 0;
     GLuint m_ssboLights  = 0;
     GLuint m_squaresSSBO = 0;
-    GLuint m_ssboTri = 0;
     GLuint m_ssboMesh = 0;
+    GLuint m_ssboBVHNodes = 0;
+
+    GLuint m_ssboVertices = 0;
+    GLuint m_ssboIndices = 0;
+    GLuint m_ssboMaterials = 0;
 
     GLuint m_quadVAO = 0;
     GLuint m_accumTex = 0;
@@ -88,7 +93,5 @@ private:
     int m_gpuTriangleCount = 0;
     int m_gpuMeshCount = 0;
 
-
-
-
+    BVH m_bvh;
 };

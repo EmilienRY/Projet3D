@@ -10,6 +10,7 @@ class Mesh
 public:
     struct Vertex {
         QVector3D pos;
+        QVector3D normal;
         QVector3D color;
     };
 
