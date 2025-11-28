@@ -4,6 +4,7 @@ struct GpuMaterial {
     float diffuseR, diffuseG, diffuseB, kd;
     float specularR, specularG, specularB, ks;
     float shininess; float pad1, pad2; int type;
+    int pad4, pad5, pad6, pad7;
 };
 
 struct GpuVertex {

@@ -277,7 +277,11 @@ bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
 
     tHit = t;
 
-    normalOut = normalize(cross(e1, e2));
+    // Interpolation des normales (Smooth Shading)
+    vec3 n0 = vertices[tri.v0].normal.xyz;
+    vec3 n1 = vertices[tri.v1].normal.xyz;
+    vec3 n2 = vertices[tri.v2].normal.xyz;
+    normalOut = normalize((1.0 - u - v) * n0 + u * n1 + v * n2);
 
     Material mat = materials[tri.matIdx];
     diffuse = mat.diffuse;
@@ -513,7 +517,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
 void mirror(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {
     rd = reflect(rd, h.normal);
     ro = h.pos + h.normal * 1e-3;
-    throughput *= vec3(1.0);
+    throughput *= h.specular;
 }
 
 void glass(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {

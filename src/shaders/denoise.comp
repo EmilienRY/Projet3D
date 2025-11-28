@@ -44,7 +44,6 @@ void main()
         centerColor = imageLoad(imgInputPass, px).rgb;
     }
 
-    vec3 center = centerColor;
     vec4 centerG = imageLoad(imgGbuffer, px);
     vec3 centerN = centerG.rgb;
     float centerD = centerG.a;
@@ -73,8 +72,8 @@ void main()
 
             float k = kernel[x+2] * kernel[y+2];
 
-            vec3 diff = c - center;
-            float dist = length(log(vec3(1.0)+c) - log(vec3(1.0)+center));
+            vec3 diff = c - centerColor;
+            float dist = length(log(vec3(1.0)+c) - log(vec3(1.0)+centerColor));
 
             float sigmaColor = 0.5 * float(u_passIndex + 1); 
             float wc = exp(-(dist*dist)/(2*sigmaColor*sigmaColor));

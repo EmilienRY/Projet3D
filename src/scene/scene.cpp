@@ -46,6 +46,7 @@ void generateSphereMesh(float radius,
             float z = radius * sin(phi) * sin(theta);
 
             verts.append({ QVector3D(x, y, z),
+                          QVector3D(x, y, z).normalized(),
                           QVector3D(1,1,1) });
         }
     }
@@ -75,10 +76,11 @@ void Scene::buildPlaneSphere()
 
     auto pushQuad = [&](QVector3D a, QVector3D b, QVector3D c, QVector3D d, QVector3D color) {
         unsigned base = verts.size();
-        verts.append({a, color});
-        verts.append({b, color});
-        verts.append({c, color});
-        verts.append({d, color});
+        QVector3D n = QVector3D::crossProduct(b-a, c-a).normalized();
+        verts.append({a, n, color});
+        verts.append({b, n, color});
+        verts.append({c, n, color});
+        verts.append({d, n, color});
         idx.append(base+0); idx.append(base+1); idx.append(base+2);
         idx.append(base+2); idx.append(base+3); idx.append(base+0);
     };
@@ -115,7 +117,6 @@ void Scene::buildPlaneSphere()
     m2.color=QVector3D(1.0, 0., 0.);;
     m2.kd = 0.5;
     m2.ks = 0.6;
-    //m2.specularColor = m2.color;
     m2.specularColor = QVector3D(1.0,1.0,1.0);
     m2.shininess = 128;
     m2.type = 1;
@@ -177,11 +178,11 @@ void Scene::buildPlaneSphere()
     addMesh(suzanne2);
 
 
-
     Light l;
     l.position = QVector3D(2.0f, 4.0f, 2.0f);
     l.color    = QVector3D(1.0f, 1.f, 1.f);
     l.intensity= 25.2f;
+    l.lightRadius = 1.1f;
     m_lights.append(l);
 }
 
@@ -211,7 +212,26 @@ void Scene::buildCornellBox()
     Material red;    red.color = QVector3D(0.65f,0.05f,0.05f);
     red.kd = 0.9f; red.ks = 0.0f; red.type=0;
     red.specularColor = QVector3D(1.0,1.0,1.0); red.shininess = 32;
-    red.type = 1;
+    red.type = 0;
+
+    Material verre;
+    verre.color = QVector3D(1.f, 1.f, 1.f);
+    verre.kd = 1.0f; 
+    verre.ks = 0.0f; 
+    verre.specularColor = QVector3D(0,0,0);
+    verre.shininess = 1;
+    verre.type = 2;
+
+
+    Material mirror;
+    mirror.color = QVector3D(1.f, 1.f, 1.f);
+    mirror.kd = 0.0f; 
+    mirror.ks = 1.0f; 
+    mirror.specularColor = QVector3D(1.0f, 1.0f, 1.0f);
+    mirror.shininess = 128;
+    mirror.type = 1;
+
+
     Material green;  green.color = QVector3D(0.12f,0.55f,0.15f);
     green.kd = 0.9f; green.ks = 0.0f; green.type=0;
     green.specularColor = QVector3D(1.0,1.0,1.0); green.shininess = 32;
@@ -223,10 +243,12 @@ void Scene::buildCornellBox()
 
         unsigned int base = 0;
 
-        verts.append({ d, mat.color });
-        verts.append({ c, mat.color });
-        verts.append({ b, mat.color });
-        verts.append({ a, mat.color });
+        QVector3D n = QVector3D::crossProduct(c-d, b-d).normalized();
+
+        verts.append({ d, n, mat.color });
+        verts.append({ c, n, mat.color });
+        verts.append({ b, n, mat.color });
+        verts.append({ a, n, mat.color });
 
         idx.append(base+0); idx.append(base+1); idx.append(base+2);
         idx.append(base+2); idx.append(base+3); idx.append(base+0);
@@ -240,7 +262,7 @@ void Scene::buildCornellBox()
     };
 
     makeQuad(A, B, C, Dp, white);    // front
-    makeQuad(F, E, Hh, G, white);    // back
+    makeQuad(F, E, Hh, G, mirror);    // back
     makeQuad(E, A, Dp, Hh, red);     // left
     makeQuad(B, F, G, C, green);     // right
     makeQuad(Dp, C, G, Hh, white);   // ceiling
@@ -249,28 +271,6 @@ void Scene::buildCornellBox()
     QVector<Mesh::Vertex> sVerts;
     QVector<unsigned int> sIdx;
     generateSphereMesh(1.0f, 20, 20, sVerts, sIdx);
-
-    // Mesh* s1 = new Mesh();
-    // s1->isSphere = true;
-    // s1->initialize(sVerts, sIdx);
-    // //s1->modelMatrix.setToIdentity();
-    // s1->modelMatrix.translate(1.0f, -2.0f, 0.5f);
-
-    // Material mirror;
-    // mirror.color = QVector3D(0.9f, 0.2f, 0.2f);
-    // mirror.kd = 0.8f;
-    // mirror.ks = 0.2f;
-    // mirror.specularColor = QVector3D(1.0,1.0,1.0);
-    // mirror.shininess = 64;
-    // mirror.type = 1;
-
-    // s1->addMaterial(mirror);
-    // addMesh(s1);
-
-
-
-
-
 
     Mesh* suzanne = new Mesh();
     QVector<Mesh::Vertex> meshVerts;
@@ -284,33 +284,62 @@ void Scene::buildCornellBox()
     suzanne->modelMatrix.translate(1.0f, -2.0f, 0.5f);
     suzanne->modelMatrix.scale(0.5);
 
-    Material cyan;
-    cyan.color=QVector3D(0,1,1);
+    Material gold;
+    gold.color = QVector3D(1.0f, 0.78f, 0.34f); 
+    gold.kd = 0.0f; 
+    gold.ks = 1.0f; 
+    gold.specularColor = gold.color; 
+    gold.shininess = 128; 
+    gold.type = 1;
 
-    cyan.kd = 1.;
-    cyan.ks = 0.3;
-    cyan.specularColor = QVector3D(1,1,1);
-    cyan.shininess = 32;
-    cyan.type=1;
-
-    suzanne->addMaterial(cyan);
+    suzanne->addMaterial(gold);
     addMesh(suzanne);
 
     Mesh* s2 = new Mesh();
     s2->isSphere = true;
     s2->initialize(sVerts, sIdx);
-    s2->modelMatrix.translate(-1.0f, -2.f, -1.0f);
+    s2->modelMatrix.translate(-2.f, 2.0f, -2.0f);
 
-    Material mate;
-    mate.color = QVector3D(0.4f, 0.4f, 1.0f);
-    mate.kd = 0.8f;
-    mate.ks = 0.1f;
-    mate.specularColor = QVector3D(1.0,1.0,1.0);
-    mate.shininess = 32;
-    mate.type = 2;
+    Material matteBlue;
+    matteBlue.color = QVector3D(0.2f, 0.2f, 0.9f);
+    matteBlue.kd = 1.0f; 
+    matteBlue.ks = 0.0f; 
+    matteBlue.specularColor = QVector3D(0,0,0);
+    matteBlue.shininess = 1;
+    matteBlue.type = 0;
 
-    s2->addMaterial(mate);
+    s2->addMaterial(matteBlue);
     addMesh(s2);
+
+    Mesh* s3 = new Mesh();
+    s3->isSphere = true;
+    s3->initialize(sVerts, sIdx);
+    s3->modelMatrix.translate(-1.0f, -2.0f, 1.0f);
+    s3->addMaterial(verre);
+    addMesh(s3);
+
+    Mesh* squirrel = new Mesh();
+    QVector<Mesh::Vertex> meshVertsSquirrel;
+    QVector<unsigned int> meshIdxSquirrel;
+    int nbTrianglesSquirrel;
+    QString meshFileSquirrel = "../../meshes/suzanne.off";
+    loadOffFile(meshFileSquirrel, meshVertsSquirrel, meshIdxSquirrel, nbTrianglesSquirrel);
+
+    squirrel->nbTriangles=nbTrianglesSquirrel;
+    squirrel->initialize(meshVertsSquirrel,meshIdxSquirrel);
+    squirrel->modelMatrix.translate(1.0f, -2.0f, -2.f);
+    squirrel->modelMatrix.scale(1.2f);
+
+    Material matteRed;
+    matteRed.color = QVector3D(1.0f, 0.0f, 0.0f);
+    matteRed.kd = 1.0f; 
+    matteRed.ks = 0.0f; 
+    matteRed.specularColor = QVector3D(0,0,0);
+    matteRed.shininess = 1;
+    matteRed.type = 0;
+
+    squirrel->addMaterial(matteRed);
+    addMesh(squirrel);
 
     Light l;
     l.position  = QVector3D(0, 2.8f, 0);
@@ -364,8 +393,13 @@ void Scene::loadOffFile(QString &fileName,
         positions.emplace_back(x, y, z);
     }
 
-    for (auto &p : positions)
-        verts.append({p, defaultColor});
+    for (auto &p : positions) {
+        Mesh::Vertex v;
+        v.pos = p;
+        v.normal = QVector3D(0, 0, 0);
+        v.color = defaultColor;
+        verts.append(v);
+    }
 
     for (int i = 0; i < faceCount; ++i) {
         int n, a, b, c;
@@ -378,7 +412,19 @@ void Scene::loadOffFile(QString &fileName,
         idx.append(static_cast<unsigned int>(a));
         idx.append(static_cast<unsigned int>(b));
         idx.append(static_cast<unsigned int>(c));
+
+        QVector3D vA = verts[a].pos;
+        QVector3D vB = verts[b].pos;
+        QVector3D vC = verts[c].pos;
+        QVector3D faceNormal = QVector3D::crossProduct(vB - vA, vC - vA);
+        
+        verts[a].normal += faceNormal;
+        verts[b].normal += faceNormal;
+        verts[c].normal += faceNormal;
     }
-    // qDebug() << "Nombre triangle" << faceCount;
+
+    for (int i = 0; i < verts.size(); ++i) {
+        verts[i].normal.normalize();
+    }
 }
 

@@ -245,6 +245,7 @@ void OpenGLWindow::uploadSceneToGPU()
         gm.shininess = m.shininess;
         gm.type = m.type;
         gm.pad1=0; gm.pad2=0;
+        gm.pad4=0; gm.pad5=0; gm.pad6=0; gm.pad7=0;
         gpuMaterials.push_back(gm);
     }
 
@@ -480,6 +481,7 @@ void OpenGLWindow::doRaster()
     }
     m_camera.processKeyboard(worldMove, dt);
 
+    glEnable(GL_DEPTH_TEST);
     glClearColor(0.1f, 0.12f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
