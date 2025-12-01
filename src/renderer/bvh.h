@@ -10,6 +10,7 @@
 struct BVHVertex {
     QVector3D pos;
     QVector3D normal;
+    QVector2D uv;
 };
 
 struct BVHMaterial {

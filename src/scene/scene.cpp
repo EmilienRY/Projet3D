@@ -133,8 +133,8 @@ void Scene::buildPlaneSphere()
     QVector<Mesh::Vertex> meshVerts;
     QVector<unsigned int> meshIdx;
     int nbTriangle;
-    QString meshFile = "../../meshes/suzanne.off";
-    loadOffFile(meshFile, meshVerts, meshIdx, nbTriangle);
+    QString meshFile = "../../meshes/suzanne.obj";
+    loadObjFile(meshFile, meshVerts, meshIdx, nbTriangle);
 
     suzanne->nbTriangles=nbTriangle;
     suzanne->initialize(meshVerts,meshIdx);
@@ -157,8 +157,8 @@ void Scene::buildPlaneSphere()
     QVector<Mesh::Vertex> meshVerts2;
     QVector<unsigned int> meshIdx2;
     int nbTriangle2;
-    QString meshFile2 = "../../meshes/suzanne.off";
-    loadOffFile(meshFile2, meshVerts2, meshIdx2, nbTriangle2);
+    QString meshFile2 = "../../meshes/suzanne.obj";
+    loadObjFile(meshFile2, meshVerts2, meshIdx2, nbTriangle2);
 
     suzanne2->nbTriangles=nbTriangle2;
     suzanne2->initialize(meshVerts2,meshIdx2);
@@ -276,8 +276,8 @@ void Scene::buildCornellBox()
     QVector<Mesh::Vertex> meshVerts;
     QVector<unsigned int> meshIdx;
     int nbTriangle;
-    QString meshFile = "../../meshes/suzanne.off";
-    loadOffFile(meshFile, meshVerts, meshIdx, nbTriangle);
+    QString meshFile = "../../meshes/sphere.obj";
+    loadObjFile(meshFile, meshVerts, meshIdx, nbTriangle);
 
     suzanne->nbTriangles=nbTriangle;
     suzanne->initialize(meshVerts,meshIdx);
@@ -307,7 +307,7 @@ void Scene::buildCornellBox()
     matteBlue.specularColor = QVector3D(0,0,0);
     matteBlue.shininess = 1;
     matteBlue.type = 0;
-
+    matteBlue.texturePath = "../..textures/sanic.png";
     s2->addMaterial(matteBlue);
     addMesh(s2);
 
@@ -322,8 +322,8 @@ void Scene::buildCornellBox()
     QVector<Mesh::Vertex> meshVertsSquirrel;
     QVector<unsigned int> meshIdxSquirrel;
     int nbTrianglesSquirrel;
-    QString meshFileSquirrel = "../../meshes/suzanne.off";
-    loadOffFile(meshFileSquirrel, meshVertsSquirrel, meshIdxSquirrel, nbTrianglesSquirrel);
+    QString meshFileSquirrel = "../../meshes/suzanne.obj";
+    loadObjFile(meshFileSquirrel, meshVertsSquirrel, meshIdxSquirrel, nbTrianglesSquirrel);
 
     squirrel->nbTriangles=nbTrianglesSquirrel;
     squirrel->initialize(meshVertsSquirrel,meshIdxSquirrel);
@@ -427,4 +427,105 @@ void Scene::loadOffFile(QString &fileName,
         verts[i].normal.normalize();
     }
 }
+
+
+
+void Scene::loadObjFile(QString &fileName,
+                        QVector<Mesh::Vertex> &verts,
+                        QVector<unsigned int> &idx,
+                        int &faceCount)
+{
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Unable to open OBJ file:" << fileName;
+        return;
+    }
+
+    QTextStream in(&file);
+
+    QVector<QVector3D> positions;
+    QVector<QVector3D> normals;
+    QVector<QVector2D> uvs;
+
+    verts.clear();
+    idx.clear();
+    faceCount = 0;
+
+    QVector3D defaultColor(1.0f, 1.0f, 1.0f);
+    QVector3D defaultNormal(0, 0, 0);
+    QVector2D defaultUV(0, 0);
+
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith("#"))
+            continue;
+
+        QStringList tokens = line.split(' ', Qt::SkipEmptyParts);
+        if (tokens.isEmpty())
+            continue;
+
+        if (tokens[0] == "v") {
+            // Vertex position
+            if (tokens.size() < 4) continue;
+            float x = tokens[1].toFloat();
+            float y = tokens[2].toFloat();
+            float z = tokens[3].toFloat();
+            positions.append(QVector3D(x, y, z));
+        }
+        else if (tokens[0] == "vn") {
+            // Vertex normal
+            if (tokens.size() < 4) continue;
+            float x = tokens[1].toFloat();
+            float y = tokens[2].toFloat();
+            float z = tokens[3].toFloat();
+            normals.append(QVector3D(x, y, z));
+        }
+        else if (tokens[0] == "vt") {
+            // Vertex UV
+            if (tokens.size() < 3) continue;
+            float u = tokens[1].toFloat();
+            float v = tokens[2].toFloat();
+            uvs.append(QVector2D(u, v));
+        }
+        else if (tokens[0] == "f") {
+            // Face
+            if (tokens.size() < 4) continue; // ignore non-triangles for now
+            faceCount++;
+
+            for (int i = 1; i <= 3; ++i) {
+                QStringList parts = tokens[i].split('/');
+                int vi = parts[0].toInt() - 1; // vertex index
+                int ti = parts.size() > 1 && !parts[1].isEmpty() ? parts[1].toInt() - 1 : -1; // uv index
+                int ni = parts.size() > 2 ? parts[2].toInt() - 1 : -1; // normal index
+
+                Mesh::Vertex v;
+                v.pos = positions[vi];
+                v.color = defaultColor;
+                v.normal = (ni >= 0 && ni < normals.size()) ? normals[ni] : defaultNormal;
+                v.uv = (ti >= 0 && ti < uvs.size()) ? uvs[ti] : defaultUV;
+
+                verts.append(v);
+                idx.append(static_cast<unsigned int>(verts.size() - 1));
+            }
+        }
+    }
+
+    if (normals.isEmpty()) {
+        for (int i = 0; i < idx.size(); i += 3) {
+            Mesh::Vertex &a = verts[idx[i]];
+            Mesh::Vertex &b = verts[idx[i + 1]];
+            Mesh::Vertex &c = verts[idx[i + 2]];
+
+            QVector3D faceNormal = QVector3D::crossProduct(b.pos - a.pos, c.pos - a.pos);
+            a.normal += faceNormal;
+            b.normal += faceNormal;
+            c.normal += faceNormal;
+        }
+
+        for (auto &v : verts) {
+            v.normal.normalize();
+        }
+    }
+}
+
 

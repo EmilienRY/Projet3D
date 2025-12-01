@@ -58,6 +58,7 @@ struct TriangleIndexed {
 struct Vertex {
     vec4 pos; // xyz, pad
     vec4 normal; // xyz, pad
+    vec4 uv; // uv, pad, pad
 };
 
 struct Material {

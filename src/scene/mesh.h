@@ -2,6 +2,7 @@
 #include <QOpenGLBuffer>
 #include <QOpenGLVertexArrayObject>
 #include <QVector3D>
+#include <QVector2D>
 #include <QMatrix4x4>
 #include "material.h"
 
@@ -12,6 +13,7 @@ public:
         QVector3D pos;
         QVector3D normal;
         QVector3D color;
+        QVector2D uv;
     };
 
     Mesh();

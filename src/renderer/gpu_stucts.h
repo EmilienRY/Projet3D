@@ -10,6 +10,7 @@ struct GpuMaterial {
 struct GpuVertex {
     float px, py, pz, pad0;
     float nx, ny, nz, pad1;
+    float u, v, pad2, pad3;
 };
 
 struct GpuTriangleIndexed {

@@ -233,6 +233,8 @@ void OpenGLWindow::uploadSceneToGPU()
         GpuVertex gv;
         gv.px = v.pos.x(); gv.py = v.pos.y(); gv.pz = v.pos.z(); gv.pad0 = 0;
         gv.nx = v.normal.x(); gv.ny = v.normal.y(); gv.nz = v.normal.z(); gv.pad1 = 0;
+        gv.u=v.uv.x(); gv.v=v.uv.y(); gv.pad2 = 0; gv.pad3 = 0;
+
         gpuVertices.push_back(gv);
     }
 

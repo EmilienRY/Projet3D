@@ -39,6 +39,7 @@ void BVH::build(const std::vector<Mesh*>& meshes) {
             float ny = normalMatrix(1,0)*v.normal.x() + normalMatrix(1,1)*v.normal.y() + normalMatrix(1,2)*v.normal.z();
             float nz = normalMatrix(2,0)*v.normal.x() + normalMatrix(2,1)*v.normal.y() + normalMatrix(2,2)*v.normal.z();
             bvhV.normal = QVector3D(nx, ny, nz).normalized();
+            bvhV.uv = v.uv;
 
             m_vertices.push_back(bvhV);
         }
