@@ -208,6 +208,8 @@ void Scene::buildCornellBox()
     Material white;  white.color = QVector3D(0.78f,0.78f,0.78f);
     white.kd = 0.9f; white.ks = 0.0f; white.type=0;
     white.specularColor = QVector3D(1.0,1.0,1.0); white.shininess = 32;
+    white.texturePath = "../../textures/carrelage.jpg";
+
 
     Material red;    red.color = QVector3D(0.65f,0.05f,0.05f);
     red.kd = 0.9f; red.ks = 0.0f; red.type=0;
@@ -216,8 +218,8 @@ void Scene::buildCornellBox()
 
     Material verre;
     verre.color = QVector3D(1.f, 1.f, 1.f);
-    verre.kd = 1.0f; 
-    verre.ks = 0.0f; 
+    verre.kd = 1.0f;
+    verre.ks = 0.0f;
     verre.specularColor = QVector3D(0,0,0);
     verre.shininess = 1;
     verre.type = 2;
@@ -225,8 +227,8 @@ void Scene::buildCornellBox()
 
     Material mirror;
     mirror.color = QVector3D(1.f, 1.f, 1.f);
-    mirror.kd = 0.0f; 
-    mirror.ks = 1.0f; 
+    mirror.kd = 0.0f;
+    mirror.ks = 1.0f;
     mirror.specularColor = QVector3D(1.0f, 1.0f, 1.0f);
     mirror.shininess = 128;
     mirror.type = 1;
@@ -261,7 +263,7 @@ void Scene::buildCornellBox()
         addMesh(m);
     };
 
-    makeQuad(A, B, C, Dp, white);    // front
+    makeQuad(A, B, C, Dp, mirror);    // front
     makeQuad(F, E, Hh, G, mirror);    // back
     makeQuad(E, A, Dp, Hh, red);     // left
     makeQuad(B, F, G, C, green);     // right
@@ -284,15 +286,25 @@ void Scene::buildCornellBox()
     suzanne->modelMatrix.translate(1.0f, -2.0f, 0.5f);
     suzanne->modelMatrix.scale(0.5);
 
-    Material gold;
-    gold.color = QVector3D(1.0f, 0.78f, 0.34f); 
-    gold.kd = 0.0f; 
-    gold.ks = 1.0f; 
-    gold.specularColor = gold.color; 
-    gold.shininess = 128; 
-    gold.type = 1;
+    // Material gold;
+    // gold.color = QVector3D(1.0f, 0.78f, 0.34f);
+    // gold.kd = 0.0f;
+    // gold.ks = 1.0f;
+    // gold.specularColor = gold.color;
+    // gold.shininess = 128;
+    // gold.type = 1;
 
-    suzanne->addMaterial(gold);
+    Material matteGreen;
+    matteGreen.color = QVector3D(0.2f, 0.2f, 0.9f);
+    matteGreen.kd = 1.0f;
+    matteGreen.ks = 0.0f;
+    matteGreen.specularColor = QVector3D(0,0,0);
+    matteGreen.shininess = 1;
+    matteGreen.type = 0;
+
+    matteGreen.texturePath = "../../textures/sanic.png";
+
+    suzanne->addMaterial(matteGreen);
     addMesh(suzanne);
 
     Mesh* s2 = new Mesh();
@@ -302,12 +314,13 @@ void Scene::buildCornellBox()
 
     Material matteBlue;
     matteBlue.color = QVector3D(0.2f, 0.2f, 0.9f);
-    matteBlue.kd = 1.0f; 
-    matteBlue.ks = 0.0f; 
+    matteBlue.kd = 1.0f;
+    matteBlue.ks = 0.0f;
     matteBlue.specularColor = QVector3D(0,0,0);
     matteBlue.shininess = 1;
     matteBlue.type = 0;
-    matteBlue.texturePath = "../..textures/sanic.png";
+    matteBlue.texturePath = "../../textures/sanic.png";
+
     s2->addMaterial(matteBlue);
     addMesh(s2);
 
@@ -332,8 +345,8 @@ void Scene::buildCornellBox()
 
     Material matteRed;
     matteRed.color = QVector3D(1.0f, 0.0f, 0.0f);
-    matteRed.kd = 1.0f; 
-    matteRed.ks = 0.0f; 
+    matteRed.kd = 1.0f;
+    matteRed.ks = 0.0f;
     matteRed.specularColor = QVector3D(0,0,0);
     matteRed.shininess = 1;
     matteRed.type = 0;
@@ -417,7 +430,7 @@ void Scene::loadOffFile(QString &fileName,
         QVector3D vB = verts[b].pos;
         QVector3D vC = verts[c].pos;
         QVector3D faceNormal = QVector3D::crossProduct(vB - vA, vC - vA);
-        
+
         verts[a].normal += faceNormal;
         verts[b].normal += faceNormal;
         verts[c].normal += faceNormal;

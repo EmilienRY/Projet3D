@@ -23,6 +23,7 @@ void BVH::build(const std::vector<Mesh*>& meshes) {
         bvhMat.kd = mat.kd;
         bvhMat.ks = mat.ks;
         bvhMat.type = mat.type;
+        bvhMat.texturePath = mat.texturePath;
         
         unsigned int matIdx = (unsigned int)m_materials.size();
         m_materials.push_back(bvhMat);

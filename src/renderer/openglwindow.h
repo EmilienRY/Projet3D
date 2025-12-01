@@ -38,7 +38,15 @@ protected:
     void focusOutEvent(QFocusEvent *ev) override;
     void resetAccumulation();
 private:
+    typedef GLuint64 (APIENTRY *PFNGLGETTEXTUREHANDLEARBPROC) (GLuint texture);
+    typedef void (APIENTRY *PFNGLMAKETEXTUREHANDLERESIDENTARBPROC) (GLuint64 handle);
+    
+    PFNGLGETTEXTUREHANDLEARBPROC glGetTextureHandleARB = nullptr;
+    PFNGLMAKETEXTUREHANDLERESIDENTARBPROC glMakeTextureHandleResidentARB = nullptr;
 
+    std::vector<GLuint64> m_textureHandles;
+    QMap<QString, int> m_textureMap;
+    
     void doRayTrace();
     void doRaster();
     void initTexSSBO();
