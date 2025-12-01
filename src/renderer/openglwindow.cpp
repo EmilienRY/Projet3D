@@ -233,7 +233,7 @@ void OpenGLWindow::uploadSceneToGPU()
         GpuVertex gv;
         gv.px = v.pos.x(); gv.py = v.pos.y(); gv.pz = v.pos.z(); gv.pad0 = 0;
         gv.nx = v.normal.x(); gv.ny = v.normal.y(); gv.nz = v.normal.z(); gv.pad1 = 0;
-        gv.u=v.uv.x(); gv.v=v.uv.y(); gv.pad2 = 0; gv.pad3 = 0;
+        gv.u=v.uv.x(); gv.v=v.uv.y();  gv.texHandle = 0; gv.pad2 = 0;
 
         gpuVertices.push_back(gv);
     }
@@ -342,6 +342,29 @@ void OpenGLWindow::uploadSceneToGPU()
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, m_ssboMaterials);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+
+void OpenGLWindow::initTexSSBO()
+{
+    for (Mesh* mesh : m_scene->meshes())
+    {
+        Material curMat = mesh->material();
+        GLuint texture;
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &texture);
+        glTextureStorage2D(texture, 1, GL_RGB8, 32, 32);
+
+        //TODO load texture from file
+
+        glGenerateTextureMipmap(texture);
+
+        const GLuint64 handle = glGetTextureHandleARB(texture);
+        if (handle == 0) {
+            std::cerr << "Error! Handle returned null" << std::endl;
+            exit(-1);
+        }
+    }
 }
 
 void OpenGLWindow::doRayTrace()

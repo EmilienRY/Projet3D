@@ -41,6 +41,7 @@ private:
 
     void doRayTrace();
     void doRaster();
+    void initTexSSBO();
 
     QStatusBar * statusbar;
     bool m_useRaytracing = false;
@@ -69,6 +70,7 @@ private:
     GLuint m_squaresSSBO = 0;
     GLuint m_ssboMesh = 0;
     GLuint m_ssboBVHNodes = 0;
+    GLuint m_ssboTextuesHandles = 0;
 
     GLuint m_ssboVertices = 0;
     GLuint m_ssboIndices = 0;
