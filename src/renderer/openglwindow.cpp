@@ -744,6 +744,14 @@ void OpenGLWindow::openOffMesh(const QVector<Mesh::Vertex> &verts,
     update();
 }
 
+void OpenGLWindow::resetScene(){
+    m_sceneIndex -=1;
+    changeScene();
+}
+
+void OpenGLWindow::setAxeX(int translation){
+    m_scene->meshes()[0]->modelMatrix.translate(translation,1.0,1.0);
+}
 
 
 

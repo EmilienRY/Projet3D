@@ -25,6 +25,8 @@ public:
                      QVector<Mesh::Vertex> &verts,
                      QVector<unsigned int> &idx);
     void changeScene();
+    void resetScene();
+    void setAxeX(int translation);
 
 protected:
     void initializeGL() override;
