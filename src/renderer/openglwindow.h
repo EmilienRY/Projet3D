@@ -26,7 +26,19 @@ public:
                      QVector<unsigned int> &idx);
     void changeScene();
     void resetScene();
-    void setAxeX(int translation);
+
+    // Opération Matriciel avec les sliders
+    void setAxeX(int value);
+    void setAxeY(int value);
+    void setAxeZ(int value);
+    void setRotationX(int value);
+    void setRotationY(int value);
+    void setRotationZ(int value);
+    void setScale(int value);
+
+    Scene* scene() { return m_scene; }
+    void setSelectedMesh(int index);
+    int m_selectedMesh = -1;
 
 protected:
     void initializeGL() override;
@@ -96,4 +108,8 @@ private:
     int m_gpuMeshCount = 0;
 
     BVH m_bvh;
+
+    signals:
+        void sceneReady();
+
 };

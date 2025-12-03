@@ -23,6 +23,9 @@ public:
     void render();
     Material material(){return m_material;}
     QMatrix4x4 modelMatrix;
+    QVector3D position = {0, 0, 0};
+    QVector3D rotation = {0, 0, 0};
+    float scale = 1.0f;
 
     void addMaterial(const Material& m);
     bool isSphere=false;
@@ -31,6 +34,7 @@ public:
     QVector<Vertex> m_Vertices;
     QVector<unsigned int> m_Indices;
     int nbTriangles;
+    void updateModelMatrix();
 
 private:
     QOpenGLBuffer m_vbo;

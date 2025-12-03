@@ -69,3 +69,15 @@ void Mesh::render()
     m_vbo.release();
     m_vao.release();
 }
+
+void Mesh::updateModelMatrix()
+{
+    modelMatrix.setToIdentity();
+    modelMatrix.translate(position);
+
+    modelMatrix.rotate(rotation.x(), 1, 0, 0);
+    modelMatrix.rotate(rotation.y(), 0, 1, 0);
+    modelMatrix.rotate(rotation.z(), 0, 0, 1);
+
+    modelMatrix.scale(scale);
+}

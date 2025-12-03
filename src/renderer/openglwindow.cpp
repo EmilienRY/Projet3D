@@ -100,6 +100,8 @@ void OpenGLWindow::initializeGL()
     m_lastTimeMs = m_frameTimer.elapsed();
     m_camera.setPosition(QVector3D(0.0f, 1.5f, 5.0f));
     m_camera.setYawPitch(-90.0f, -10.0f);
+
+    emit sceneReady();
 }
 
 void OpenGLWindow::resizeGL(int w, int h)
@@ -744,14 +746,115 @@ void OpenGLWindow::openOffMesh(const QVector<Mesh::Vertex> &verts,
     update();
 }
 
+void OpenGLWindow::setSelectedMesh(int index)
+{
+    m_selectedMesh = index;
+}
+
 void OpenGLWindow::resetScene(){
     m_sceneIndex -=1;
     changeScene();
 }
 
-void OpenGLWindow::setAxeX(int translation){
-    m_scene->meshes()[0]->modelMatrix.translate(translation,1.0,1.0);
+void OpenGLWindow::setAxeX(int value)
+{
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+    mesh->position.setX(value / 10.0f);
+
+    mesh->updateModelMatrix();
+
+    update();
 }
 
+void OpenGLWindow::setAxeY(int value)
+{
+    if (!m_scene) return;
 
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+    mesh->position.setY(value / 10.0f);
+
+    mesh->updateModelMatrix();
+
+    update();
+}
+
+void OpenGLWindow::setAxeZ(int value)
+{
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+    mesh->position.setZ(value / 10.0f);
+
+    mesh->updateModelMatrix();
+
+    update();
+}
+
+void OpenGLWindow::setRotationX(int value)
+{
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+    mesh->rotation.setX(value);
+
+    mesh->updateModelMatrix();
+}
+
+void OpenGLWindow::setRotationY(int value)
+{
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+    mesh->rotation.setY(value);
+
+    mesh->updateModelMatrix();
+}
+
+void OpenGLWindow::setRotationZ(int value)
+{
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+    mesh->rotation.setZ(value);
+
+    mesh->updateModelMatrix();
+}
+
+void OpenGLWindow::setScale(int value)
+{
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+    if (value > 0){
+        mesh->scale = (float)value/10.0;
+    }
+    else {
+        mesh->scale = 0.1;
+    }
+
+    mesh->updateModelMatrix();
+}
 

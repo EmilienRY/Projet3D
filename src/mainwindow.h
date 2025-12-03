@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 #include <QMainWindow>
+#include <QComboBox>
 
 class OpenGLWindow;
 
@@ -16,6 +17,19 @@ private slots:
 
 private:
     OpenGLWindow *m_glWindow;
+    QComboBox *meshSelector;
+    void on_resetButton_clicked();
+
+    QSlider *xSlider;
+    QSlider *ySlider;
+    QSlider *zSlider;
+
+    QSlider *rotationXslider;
+    QSlider *rotationYslider;
+    QSlider *rotationZslider;
+
+    QSlider *scaleSlider;
+
 };
 
 #endif // MAINWINDOW_H
