@@ -278,7 +278,7 @@ void Scene::buildCornellBox()
     QVector<Mesh::Vertex> meshVerts;
     QVector<unsigned int> meshIdx;
     int nbTriangle;
-    QString meshFile = "../../meshes/sphere.obj";
+    QString meshFile = "../../meshes/chat.obj";
     loadObjFile(meshFile, meshVerts, meshIdx, nbTriangle);
 
     suzanne->nbTriangles=nbTriangle;
