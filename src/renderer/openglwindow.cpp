@@ -93,6 +93,13 @@ void OpenGLWindow::initializeGL()
     m_sceneIndex = 0;
     m_scene->buildPlaneSphere();
 
+    glGetTextureHandleARB = (PFNGLGETTEXTUREHANDLEARBPROC)context()->getProcAddress("glGetTextureHandleARB");
+    glMakeTextureHandleResidentARB = (PFNGLMAKETEXTUREHANDLERESIDENTARBPROC)context()->getProcAddress("glMakeTextureHandleResidentARB");
+
+    if (!glGetTextureHandleARB || !glMakeTextureHandleResidentARB) {
+        qWarning() << "GL_ARB_bindless_texture not supported or not found!";
+    }
+
     loadShaders();
     uploadSceneToGPU();
 
@@ -147,6 +154,8 @@ void OpenGLWindow::resetAccumulation()
 
 void OpenGLWindow::uploadSceneToGPU()
 {
+    initTexSSBO();
+
     std::vector<GpuSphere> spheres;
     std::vector<GpuSquare> squares;
     std::vector<GpuLight>  lights;
@@ -180,10 +189,15 @@ void OpenGLWindow::uploadSceneToGPU()
             s.pad1=0.0f;
             s.pad2=0.0f;
             s.pad3=0.0f;
-            s.pad4=0;
             s.pad5=0;
             s.pad6=0;
             s.Material_type=mesh->material().type;
+            
+            s.textureIdx = -1;
+            if (!mesh->material().texturePath.isEmpty() && m_textureMap.contains(mesh->material().texturePath)) {
+                s.textureIdx = m_textureMap[mesh->material().texturePath];
+            }
+
             spheres.push_back(s);
         }
         else if (mesh->isSquare)
@@ -211,10 +225,14 @@ void OpenGLWindow::uploadSceneToGPU()
             sq.shininess=mesh->material().shininess;
             sq.Material_type=mesh->material().type;
 
+            sq.textureIdx = -1;
+            if (!mesh->material().texturePath.isEmpty() && m_textureMap.contains(mesh->material().texturePath)) {
+                sq.textureIdx = m_textureMap[mesh->material().texturePath];
+            }
+
             sq.pad1=0.0f;
             sq.pad2=0.0f;
             sq.pad3=0.0f;
-            sq.pad4=0;
             sq.pad5=0;
             sq.pad6=0;
 
@@ -235,7 +253,7 @@ void OpenGLWindow::uploadSceneToGPU()
         GpuVertex gv;
         gv.px = v.pos.x(); gv.py = v.pos.y(); gv.pz = v.pos.z(); gv.pad0 = 0;
         gv.nx = v.normal.x(); gv.ny = v.normal.y(); gv.nz = v.normal.z(); gv.pad1 = 0;
-        gv.u=v.uv.x(); gv.v=v.uv.y(); gv.pad2 = 0; gv.pad3 = 0;
+        gv.u=v.uv.x(); gv.v=v.uv.y();  gv.texHandle = 0; gv.pad2 = 0;
 
         gpuVertices.push_back(gv);
     }
@@ -249,7 +267,13 @@ void OpenGLWindow::uploadSceneToGPU()
         gm.shininess = m.shininess;
         gm.type = m.type;
         gm.pad1=0; gm.pad2=0;
-        gm.pad4=0; gm.pad5=0; gm.pad6=0; gm.pad7=0;
+        
+        gm.textureIdx = -1;
+        if (!m.texturePath.isEmpty() && m_textureMap.contains(m.texturePath)) {
+            gm.textureIdx = m_textureMap[m.texturePath];
+        }
+
+        gm.pad5=0; gm.pad6=0; gm.pad7=0;
         gpuMaterials.push_back(gm);
     }
 
@@ -344,6 +368,55 @@ void OpenGLWindow::uploadSceneToGPU()
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, m_ssboMaterials);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+
+void OpenGLWindow::initTexSSBO()
+{
+    m_textureHandles.clear();
+    m_textureMap.clear();
+
+    for (Mesh* mesh : m_scene->meshes())
+    {
+        QString path = mesh->material().texturePath;
+        if (path.isEmpty()) continue;
+        if (m_textureMap.contains(path)) continue;
+
+        QImage img(path);
+        if (img.isNull()) {
+            qWarning() << "Failed to load texture:" << path;
+            continue;
+        }
+        img = img.convertToFormat(QImage::Format_RGBA8888);
+        img = img.mirrored();
+
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, img.width(), img.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        const GLuint64 handle = glGetTextureHandleARB(texture);
+        if (handle == 0) {
+            qDebug() << "Error! Handle returned null";
+            continue;
+        }
+        glMakeTextureHandleResidentARB(handle);
+
+        m_textureHandles.push_back(handle);
+        m_textureMap[path] = m_textureHandles.size() - 1;
+    }
+
+    if (!m_textureHandles.empty()) {
+        if (!m_ssboTextuesHandles) glGenBuffers(1, &m_ssboTextuesHandles);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssboTextuesHandles);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, m_textureHandles.size() * sizeof(GLuint64),
+                     m_textureHandles.data(), GL_STATIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 9, m_ssboTextuesHandles);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    }
 }
 
 void OpenGLWindow::doRayTrace()

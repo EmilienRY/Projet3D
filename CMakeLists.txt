@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- Trouver Qt6 (Qt6.10)
-find_package(Qt6 REQUIRED COMPONENTS Gui OpenGLWidgets)
+find_package(Qt6 REQUIRED COMPONENTS Gui OpenGLWidgets OpenGL)
 find_package(Qt6 REQUIRED COMPONENTS Concurrent)
 
 qt_standard_project_setup(REQUIRES 6.8)
@@ -43,6 +43,7 @@ target_include_directories(appRayTracingGPU PRIVATE
 target_link_libraries(appRayTracingGPU
     PRIVATE Qt6::Gui Qt6::OpenGLWidgets
     PRIVATE Qt6::Concurrent
+    PRIVATE Qt6::OpenGL
 )
 
 # --- Installation (optionnelle)

@@ -19,6 +19,7 @@ struct BVHMaterial {
     float shininess;
     float kd, ks;
     int type;
+    QString texturePath;
 };
 
 struct BVHTriangle {

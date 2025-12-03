@@ -52,9 +52,18 @@ protected:
     void focusOutEvent(QFocusEvent *ev) override;
     void resetAccumulation();
 private:
+    typedef GLuint64 (APIENTRY *PFNGLGETTEXTUREHANDLEARBPROC) (GLuint texture);
+    typedef void (APIENTRY *PFNGLMAKETEXTUREHANDLERESIDENTARBPROC) (GLuint64 handle);
+    
+    PFNGLGETTEXTUREHANDLEARBPROC glGetTextureHandleARB = nullptr;
+    PFNGLMAKETEXTUREHANDLERESIDENTARBPROC glMakeTextureHandleResidentARB = nullptr;
 
+    std::vector<GLuint64> m_textureHandles;
+    QMap<QString, int> m_textureMap;
+    
     void doRayTrace();
     void doRaster();
+    void initTexSSBO();
 
     QStatusBar * statusbar;
     bool m_useRaytracing = false;
@@ -83,6 +92,7 @@ private:
     GLuint m_squaresSSBO = 0;
     GLuint m_ssboMesh = 0;
     GLuint m_ssboBVHNodes = 0;
+    GLuint m_ssboTextuesHandles = 0;
 
     GLuint m_ssboVertices = 0;
     GLuint m_ssboIndices = 0;
