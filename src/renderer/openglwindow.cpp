@@ -48,6 +48,8 @@ void OpenGLWindow::initializeGL()
     initializeOpenGLFunctions();
     qDebug() << "OpenGL Version:" << (const char*)glGetString(GL_VERSION);
     qDebug() << "GLSL Version:"  << (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
+    qDebug() << "Renderer:"      << (const char*)glGetString(GL_RENDERER);
+    qDebug() << "Vendor:"        << (const char*)glGetString(GL_VENDOR);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
