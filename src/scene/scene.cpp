@@ -299,7 +299,7 @@ void Scene::buildCornellBox()
     suzanne->modelMatrix.translate(1.0f, -2.0f, 0.5f);
     suzanne->position = QVector3D (1.0f, -2.0f, 0.5f);
     suzanne->modelMatrix.scale(0.5);
-    suzanne->scale=0.5f
+    suzanne->scale=0.5f;
 
     // Material gold;
     // gold.color = QVector3D(1.0f, 0.78f, 0.34f);

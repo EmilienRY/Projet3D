@@ -106,6 +106,8 @@ layout(location = 10) uniform int u_frameIndex;
 layout(location = 11) uniform int u_spp;
 layout(location = 12) uniform int u_triangleCount;
 layout(location = 13) uniform int u_meshCount;
+layout(location = 14) uniform int u_maxBounces;
+layout(location = 15) uniform int u_shadowSamples;
 
 // -------
 // ALEA
@@ -596,7 +598,7 @@ void glass(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {
 }
 
 // ------
-// MAIN (PATH TRACING - ORIGINAL)
+// MAIN 
 // ------
 
 void main()
@@ -625,7 +627,7 @@ void main()
 
         vec3 throughput = vec3(1.0);
         vec3 radiance = vec3(0.0);
-        const int MAX_BOUNCES = 5;
+        const int MAX_BOUNCES = u_maxBounces;
 
         for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
         {
@@ -676,9 +678,8 @@ void main()
                 float lightRadius = lights[li].lightRadius;
 
                 vec3 accumContribution = vec3(0.0);
-                int shadowSamples = 1;
 
-                for (int s = 0; s < shadowSamples; s++)
+                for (int s = 0; s < u_shadowSamples; s++)
                 {
                     vec3 rnd = sampleUniformSphere(seed);
                     vec3 lightPoint = Lpos + rnd * lightRadius;
@@ -704,7 +705,7 @@ void main()
                     }
                 }
 
-                directLight += accumContribution / float(shadowSamples);
+                directLight += accumContribution / float(u_shadowSamples);
             }
 
             radiance += throughput * directLight;

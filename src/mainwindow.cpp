@@ -96,6 +96,10 @@ mainWindow::mainWindow(QWidget *parent)
     connect(m_glWindow, &OpenGLWindow::selectedMeshChanged,
             this, &mainWindow::onMeshSelected);
 
+    fpsLabel = new QLabel("FPS: 0");
+    layout->addRow("FPS :", fpsLabel);
+    connect(m_glWindow, &OpenGLWindow::fpsChanged, this, &mainWindow::updateFps);
+
 
     // --- Reset Button ---
     QPushButton *resetBtn = new QPushButton("Reset Scene");
@@ -193,6 +197,11 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     rotationZslider->setValue(rota.z());
 
     scaleSlider->setValue(scale * 10.0);
+}
+
+void mainWindow::updateFps(float fps)
+{
+    fpsLabel->setText(QString::number(fps, 'f', 2));
 }
 
 

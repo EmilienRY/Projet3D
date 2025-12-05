@@ -63,6 +63,7 @@ private:
     std::vector<GLuint64> m_textureHandles;
     QMap<QString, int> m_textureMap;
     
+    void doRayTraceOffLine();
     void doRayTrace();
     void doRaster();
     void initTexSSBO();
@@ -79,6 +80,8 @@ private:
     Camera m_camera;
     QElapsedTimer m_frameTimer;
     qint64 m_lastTimeMs {0};
+    int m_frameCount {0};
+    qint64 m_lastFpsTime {0};
     QSet<int> m_keysPressed;
     int m_sceneIndex = 0;
 
@@ -108,6 +111,10 @@ private:
 
     int m_accumFrame = 0;
     int m_maxBounces = 4;
+    int m_shadowSamples = 1;
+
+    bool m_offLineMode = false;
+
 
     QVector3D m_lastCamPos;
     QVector3D m_lastCamFront;
@@ -122,6 +129,7 @@ private:
     BVH m_bvh;
 
     signals:
+        void fpsChanged(float fps);
         void sceneReady();
         void selectedMeshChanged(int index, QVector3D position, QVector3D rota, float scale);
 

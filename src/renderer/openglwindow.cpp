@@ -4,6 +4,8 @@
 #include <QFile>
 #include <QDebug>
 #include <QMenu>
+#include <QDir>
+#include <QDateTime>
 #include "scene/mesh.h"
 #include "scene/scene.h"
 #include "gpu_stucts.h"
@@ -108,6 +110,7 @@ void OpenGLWindow::initializeGL()
 
     m_frameTimer.start();
     m_lastTimeMs = m_frameTimer.elapsed();
+    m_lastFpsTime = m_lastTimeMs;
     m_camera.setPosition(QVector3D(0.0f, 1.5f, 5.0f));
     m_camera.setYawPitch(-90.0f, -10.0f);
 
@@ -466,6 +469,8 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->setUniformValue("u_frameIndex",   m_accumFrame);
     m_computeProgram->setUniformValue("u_triangleCount",  m_gpuTriangleCount);
     m_computeProgram->setUniformValue("u_meshCount",  m_gpuMeshCount);
+    m_computeProgram->setUniformValue("u_maxBounces",  m_maxBounces);
+    m_computeProgram->setUniformValue("u_shadowSamples",  m_shadowSamples);
 
     int currentSpp  = 1;
     m_computeProgram->setUniformValue("u_spp", currentSpp);
@@ -542,6 +547,87 @@ void OpenGLWindow::doRayTrace()
     update();
 }
 
+void OpenGLWindow::doRayTraceOffLine()
+{
+
+    printf("Launching off line ray tracing ...\n");
+
+    resetAccumulation();
+
+    qint64 now = m_frameTimer.elapsed();
+    float dt = (now - m_lastTimeMs) / 1000.0f;
+    m_lastTimeMs = now;
+
+    int gx = (width()+15)/16;
+    int gy = (height()+15)/16;
+
+    m_computeProgram->bind();
+
+    m_computeProgram->setUniformValue("u_sphereCount",  m_gpuSphereCount);
+    m_computeProgram->setUniformValue("u_lightCount",   m_gpuLightCount);
+    m_computeProgram->setUniformValue("u_squareCount",  m_gpuSquareCount);
+    m_computeProgram->setUniformValue("u_camPos",       m_camera.position());
+    m_computeProgram->setUniformValue("u_camFront",     m_camera.front());
+    m_computeProgram->setUniformValue("u_camRight",     m_camera.right());
+    m_computeProgram->setUniformValue("u_camUp",        m_camera.up());
+    m_computeProgram->setUniformValue("u_fovDeg",       60.0f);
+    m_computeProgram->setUniformValue("u_width",        width());
+    m_computeProgram->setUniformValue("u_height",       height());
+    m_computeProgram->setUniformValue("u_frameIndex",   m_accumFrame);
+    m_computeProgram->setUniformValue("u_triangleCount",  m_gpuTriangleCount);
+    m_computeProgram->setUniformValue("u_meshCount",  m_gpuMeshCount);
+    m_computeProgram->setUniformValue("u_maxBounces",  100);
+    m_computeProgram->setUniformValue("u_shadowSamples",  64);
+
+    int currentSpp  = 1;
+    m_computeProgram->setUniformValue("u_spp", currentSpp);
+
+    glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glBindImageTexture(4, m_gBufferTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glDispatchCompute(gx, gy, 1);
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+    m_computeProgram->release();
+
+    qDebug() << "Saving offline render...";
+    
+    int w = width();
+    int h = height();
+    std::vector<float> pixels(w * h * 4);
+    
+    glBindTexture(GL_TEXTURE_2D, m_currentTex);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixels.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    QImage img(w, h, QImage::Format_RGBA8888);
+    for (int y = 0; y < h; ++y) {
+        for (int x = 0; x < w; ++x) {
+            int idx = (y * w + x) * 4;
+            float r = pixels[idx + 0];
+            float g = pixels[idx + 1];
+            float b = pixels[idx + 2];
+            
+            r = pow(std::min(std::max(r, 0.0f), 1.0f), 1.0f/2.2f);
+            g = pow(std::min(std::max(g, 0.0f), 1.0f), 1.0f/2.2f);
+            b = pow(std::min(std::max(b, 0.0f), 1.0f), 1.0f/2.2f);
+
+            img.setPixelColor(x, h - 1 - y, QColor::fromRgbF(r, g, b));
+        }
+    }
+
+    QDir dir;
+    if (!dir.exists("../../screenshots")) {
+        dir.mkdir("../../screenshots");
+    }
+    QString fileName = QString("../../screenshots/offline_%1.png")
+                           .arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
+    if (img.save(fileName)) {
+        qDebug() << "Saved to" << fileName;
+    } else {
+        qWarning() << "Failed to save" << fileName;
+    }
+}
+
 
 
 
@@ -591,10 +677,30 @@ void OpenGLWindow::doRaster()
 
 void OpenGLWindow::paintGL()
 {
+    m_frameCount++;
+    qint64 now = m_frameTimer.elapsed();
+    if (now - m_lastFpsTime >= 1000) {
+        float fps = m_frameCount * 1000.0f / (now - m_lastFpsTime);
+        emit fpsChanged(fps);
+        m_frameCount = 0;
+        m_lastFpsTime = now;
+    }
+
     if(m_useRaytracing)
     {
-        uploadSceneToGPU();
-        doRayTrace();
+        if ((m_camera.position() - m_lastCamPos).length() > 1e-4f ||
+            (m_camera.front() - m_lastCamFront).length() > 1e-4f ||
+            (m_camera.up() - m_lastCamUp).length() > 1e-4f)
+        {
+            uploadSceneToGPU();
+
+        }
+
+        if(!m_offLineMode)
+        {
+            doRayTrace();
+        }
+
     }
     else
     {
@@ -666,8 +772,7 @@ void OpenGLWindow::keyPressEvent(QKeyEvent *ev)
         setKeyboardGrabEnabled(false);
         setMouseGrabEnabled(false);
     #else
-        // QWindow (Qt < 6.10) doesn't provide keyboard/mouse grab API here.
-        // Cursor already restored above; keep no-op for compatibility.
+
     #endif
         return;
     }
@@ -687,6 +792,9 @@ void OpenGLWindow::keyPressEvent(QKeyEvent *ev)
         qDebug() << "Raytracing mode =" << m_useRaytracing;
     }
 
+    if (ev->key() == Qt::Key_O) {
+        doRayTraceOffLine();
+    }
 
     m_keysPressed.insert(ev->key());
     QOpenGLWindow::keyPressEvent(ev);
@@ -721,8 +829,7 @@ void OpenGLWindow::mousePressEvent(QMouseEvent *ev)
         setKeyboardGrabEnabled(true);
         setMouseGrabEnabled(true);
     #else
-        // QWindow (Qt < 6.10) doesn't provide keyboard/mouse grab API here.
-        // We avoid calling QWidget-only APIs; cursor is already hidden.
+
     #endif
     }
 
@@ -755,8 +862,7 @@ void OpenGLWindow::focusOutEvent(QFocusEvent *ev)
     setKeyboardGrabEnabled(false);
     setMouseGrabEnabled(false);
 #else
-    // QWindow (Qt < 6.10) doesn't provide keyboard/mouse grab API here.
-    // No-op to remain compatible with older Qt versions.
+
 #endif
     }
 

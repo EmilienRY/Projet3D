@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 #include <QMainWindow>
 #include <QComboBox>
+#include <QLabel>
 
 class OpenGLWindow;
 
@@ -17,6 +18,7 @@ private slots:
     void openOffMesh();
     void openObjMesh();
     void onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale);
+    void updateFps(float fps);
 
 
 private:
@@ -33,6 +35,7 @@ private:
     QSlider *rotationZslider;
 
     QSlider *scaleSlider;
+    QLabel *fpsLabel;
 
 };
 
