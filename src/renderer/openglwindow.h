@@ -123,7 +123,6 @@ private:
 
     signals:
         void sceneReady();
-        void sceneUpdate();
         void selectedMeshChanged(int index, QVector3D position, QVector3D rota, float scale);
 
 

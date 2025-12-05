@@ -297,7 +297,9 @@ void Scene::buildCornellBox()
     suzanne->nbTriangles=nbTriangle;
     suzanne->initialize(meshVerts,meshIdx);
     suzanne->modelMatrix.translate(1.0f, -2.0f, 0.5f);
+    suzanne->position = QVector3D (1.0f, -2.0f, 0.5f);
     suzanne->modelMatrix.scale(0.5);
+    suzanne->scale=0.5f
 
     // Material gold;
     // gold.color = QVector3D(1.0f, 0.78f, 0.34f);
@@ -324,6 +326,7 @@ void Scene::buildCornellBox()
     s2->isSphere = true;
     s2->initialize(sVerts, sIdx);
     s2->modelMatrix.translate(-2.f, 2.0f, -2.0f);
+    s2->position = QVector3D(2.0f, 2.0f, -2.0f);
 
     Material matteBlue;
     matteBlue.color = QVector3D(0.2f, 0.2f, 0.9f);
@@ -341,6 +344,7 @@ void Scene::buildCornellBox()
     s3->isSphere = true;
     s3->initialize(sVerts, sIdx);
     s3->modelMatrix.translate(-1.0f, -2.0f, 1.0f);
+    s3->position = QVector3D(-1.0f, -2.0f, 1.0f);
     s3->addMaterial(verre);
     addMesh(s3);
 
@@ -353,8 +357,12 @@ void Scene::buildCornellBox()
 
     squirrel->nbTriangles=nbTrianglesSquirrel;
     squirrel->initialize(meshVertsSquirrel,meshIdxSquirrel);
+
     squirrel->modelMatrix.translate(1.0f, -2.0f, -2.f);
+    squirrel->position = QVector3D(1.0f, -2.0f, -2.0f);
+
     squirrel->modelMatrix.scale(1.2f);
+    squirrel->scale = 1.2f;
 
     Material matteRed;
     matteRed.color = QVector3D(1.0f, 0.0f, 0.0f);

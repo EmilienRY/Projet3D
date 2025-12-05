@@ -672,6 +672,7 @@ void OpenGLWindow::keyPressEvent(QKeyEvent *ev)
 
     if (ev->key() == Qt::Key_Plus || ev->text() == "+") {
         changeScene();
+        emit sceneReady();
     }
 
     if (ev->key() == Qt::Key_R) {
@@ -819,6 +820,7 @@ void OpenGLWindow::openOffMesh(const QVector<Mesh::Vertex> &verts,
     resetAccumulation();
     doneCurrent();
     update();
+    emit sceneReady();
 }
 
 void OpenGLWindow::openOBJmesh(const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount)
@@ -835,6 +837,7 @@ void OpenGLWindow::openOBJmesh(const QVector<Mesh::Vertex> &verts, const QVector
     resetAccumulation();
     doneCurrent();
     update();
+    emit sceneReady();
 }
 
 void OpenGLWindow::setSelectedMesh(int index)
@@ -855,10 +858,6 @@ void OpenGLWindow::resetScene(){
     m_sceneIndex -=1;
     changeScene();
 }
-
-// void OpenGLWindow::sceneUpdate(){
-
-// }
 
 void OpenGLWindow::setAxeX(int value)
 {
