@@ -174,9 +174,9 @@ void OpenGLWindow::uploadSceneToGPU()
         if (mesh->isSphere)
         {
             GpuSphere s;
-            QVector3D pos = mesh->modelMatrix.map(QVector3D(0,0,0));
+            QVector3D pos = mesh->position;
             s.cx = pos.x(); s.cy = pos.y(); s.cz = pos.z();
-            s.radius = 1.0f;
+            s.radius = mesh->scale;
 
             s.diffuseR = mesh->material().color.x();
             s.diffuseG = mesh->material().color.y();
