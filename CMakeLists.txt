@@ -5,11 +5,14 @@ project(RayTracingGPU VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
 # --- Trouver Qt6 (Qt6.10)
-find_package(Qt6 REQUIRED COMPONENTS Gui OpenGLWidgets OpenGL)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Gui OpenGLWidgets OpenGL)
 find_package(Qt6 REQUIRED COMPONENTS Concurrent)
 
-qt_standard_project_setup(REQUIRES 6.8)
 
 # --- Crée l’exécutable principal AVANT de définir les sources
 qt_add_executable(appRayTracingGPU
@@ -41,7 +44,7 @@ target_include_directories(appRayTracingGPU PRIVATE
 
 # --- Lier Qt
 target_link_libraries(appRayTracingGPU
-    PRIVATE Qt6::Gui Qt6::OpenGLWidgets
+    PRIVATE Qt6::Widgets Qt6::Gui Qt6::OpenGLWidgets
     PRIVATE Qt6::Concurrent
     PRIVATE Qt6::OpenGL
 )
