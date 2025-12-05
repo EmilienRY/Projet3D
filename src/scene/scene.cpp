@@ -103,6 +103,7 @@ void Scene::buildPlaneSphere()
     m1.type=0;
 
     Mesh* plane = new Mesh();
+    plane->name = "plan";
     plane->addMaterial(m1);
     plane->initialize(verts, idx);
     plane->isSquare=true;
@@ -123,6 +124,7 @@ void Scene::buildPlaneSphere()
 
 
     Mesh* sphere = new Mesh();
+    sphere->name = "sphere";
     sphere->addMaterial(m2);
     sphere->initialize(sVerts, sIdx);
     sphere->modelMatrix.translate(0, 1, 0);
@@ -131,6 +133,7 @@ void Scene::buildPlaneSphere()
     addMesh(sphere);
 
     Mesh* suzanne = new Mesh();
+    suzanne->name = "suzanne";
     QVector<Mesh::Vertex> meshVerts;
     QVector<unsigned int> meshIdx;
     int nbTriangle;
@@ -161,6 +164,7 @@ void Scene::buildPlaneSphere()
     addMesh(suzanne);
 
     Mesh* suzanne2 = new Mesh();
+    suzanne2->name = "suzanne1";
     QVector<Mesh::Vertex> meshVerts2;
     QVector<unsigned int> meshIdx2;
     int nbTriangle2;
@@ -251,7 +255,7 @@ void Scene::buildCornellBox()
     green.kd = 0.9f; green.ks = 0.0f; green.type=0;
     green.specularColor = QVector3D(1.0,1.0,1.0); green.shininess = 32;
 
-    auto makeQuad = [&](QVector3D a, QVector3D b, QVector3D c, QVector3D d, Material mat)
+    auto makeQuad = [&](QVector3D a, QVector3D b, QVector3D c, QVector3D d, Material mat, QString name)
     {
         QVector<Mesh::Vertex> verts;
         QVector<unsigned int> idx;
@@ -273,15 +277,16 @@ void Scene::buildCornellBox()
         m->modelMatrix.setToIdentity();
         m->addMaterial(mat);
         m->isSquare=true;
+        m->name = name;
         addMesh(m);
     };
 
-    makeQuad(A, B, C, Dp, mirror);    // front
-    makeQuad(F, E, Hh, G, mirror);    // back
-    makeQuad(E, A, Dp, Hh, red);     // left
-    makeQuad(B, F, G, C, green);     // right
-    makeQuad(Dp, C, G, Hh, white);   // ceiling
-    makeQuad(E, F, B, A, white);     // floor
+    makeQuad(A, B, C, Dp, mirror, "front");    // front
+    makeQuad(F, E, Hh, G, mirror, "back");    // back
+    makeQuad(E, A, Dp, Hh, red, "left");     // left
+    makeQuad(B, F, G, C, green, "right");     // right
+    makeQuad(Dp, C, G, Hh, white, "ceiling");   // ceiling
+    makeQuad(E, F, B, A, white, "floor");     // floor
 
     QVector<Mesh::Vertex> sVerts;
     QVector<unsigned int> sIdx;
@@ -293,13 +298,15 @@ void Scene::buildCornellBox()
     int nbTriangle;
     QString meshFile = "../../meshes/chat.obj";
     loadObjFile(meshFile, meshVerts, meshIdx, nbTriangle);
+    suzanne->name = "chat";
 
     suzanne->nbTriangles=nbTriangle;
     suzanne->initialize(meshVerts,meshIdx);
     suzanne->modelMatrix.translate(1.0f, -2.0f, 0.5f);
     suzanne->position = QVector3D (1.0f, -2.0f, 0.5f);
+
     suzanne->modelMatrix.scale(0.5);
-    suzanne->scale=0.5f
+    suzanne->scale=0.5f;
 
     // Material gold;
     // gold.color = QVector3D(1.0f, 0.78f, 0.34f);
@@ -323,10 +330,11 @@ void Scene::buildCornellBox()
     addMesh(suzanne);
 
     Mesh* s2 = new Mesh();
+    s2->name = "sphere sanic";
     s2->isSphere = true;
     s2->initialize(sVerts, sIdx);
     s2->modelMatrix.translate(-2.f, 2.0f, -2.0f);
-    s2->position = QVector3D(2.0f, 2.0f, -2.0f);
+    s2->position = QVector3D(-2.0f, 2.0f, -2.0f);
 
     Material matteBlue;
     matteBlue.color = QVector3D(0.2f, 0.2f, 0.9f);
@@ -341,6 +349,7 @@ void Scene::buildCornellBox()
     addMesh(s2);
 
     Mesh* s3 = new Mesh();
+    s3->name = "sphere verre";
     s3->isSphere = true;
     s3->initialize(sVerts, sIdx);
     s3->modelMatrix.translate(-1.0f, -2.0f, 1.0f);
@@ -349,6 +358,7 @@ void Scene::buildCornellBox()
     addMesh(s3);
 
     Mesh* squirrel = new Mesh();
+    squirrel->name = "suzanne";
     QVector<Mesh::Vertex> meshVertsSquirrel;
     QVector<unsigned int> meshIdxSquirrel;
     int nbTrianglesSquirrel;

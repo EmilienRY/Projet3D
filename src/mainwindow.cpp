@@ -54,7 +54,12 @@ mainWindow::mainWindow(QWidget *parent)
 
         const QVector<Mesh*>& meshes = scene->meshes();
         for (int i = 0; i < meshes.size(); ++i) {
-            meshSelector->addItem(QString("Mesh %1").arg(i));
+            if (meshes[i]->name != nullptr) {
+                meshSelector->addItem(meshes[i]->name);
+            }
+            else{
+                meshSelector->addItem(QString("Mesh %1").arg(i));
+            }
         }
     });
 
@@ -138,7 +143,7 @@ void mainWindow::openOffMesh()
         m_glWindow->loadOffFile(fileName, verts, idx);
 
         QMetaObject::invokeMethod(this, [=]() {
-            m_glWindow->openOffMesh(verts, idx);
+            m_glWindow->openOffMesh(fileName, verts, idx);
             statusBar()->showMessage("Mesh loaded");
         });
     });
@@ -165,7 +170,7 @@ void mainWindow::openObjMesh()
         m_glWindow->scene()->loadObjFile(fileName, verts, idx, faceCount);
 
         QMetaObject::invokeMethod(m_glWindow, [=]() {
-            m_glWindow->openOBJmesh(verts, idx, faceCount);
+            m_glWindow->openOBJmesh(fileName, verts, idx, faceCount);
             statusBar()->showMessage("Mesh loaded");
         });
     });
@@ -174,6 +179,16 @@ void mainWindow::openObjMesh()
 void mainWindow::on_resetButton_clicked()
 {
     m_glWindow->resetScene();
+    xSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->position.x()* 10);
+    ySlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->position.y()* 10);
+    zSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->position.z()* 10);
+
+
+    rotationXslider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->rotation.x());
+    rotationYslider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->rotation.y());
+    rotationZslider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->rotation.z());
+
+    scaleSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->scale * 10.0);
 }
 
 void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale)

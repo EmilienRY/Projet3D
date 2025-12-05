@@ -823,15 +823,32 @@ void OpenGLWindow::loadOffFile(const QString &fileName,
     }
 }
 
-void OpenGLWindow::openOffMesh(const QVector<Mesh::Vertex> &verts,
-                               const QVector<unsigned int> &idx)
+void OpenGLWindow::openOffMesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx)
 {
     makeCurrent();
+    QString meshName = filename;
+    meshName.remove(0,filename.lastIndexOf("/")+1);
+    meshName.remove(meshName.indexOf("."), meshName.size());
+
     Mesh* mesh = new Mesh();
     mesh->initialize(verts, idx);
     mesh->modelMatrix.setToIdentity();
 
+    int countName = 0;
+
     m_scene->addMesh(mesh);
+
+    for (int i = 0; i < m_scene->meshes().size(); ++i) {
+        if (meshName == m_scene->meshes()[i]->name){
+            countName++;
+        }
+    }
+
+    if (countName > 0){
+        meshName.insert(meshName.size(), QString::number(countName+1));
+    }
+    mesh->name = meshName;
+
     uploadSceneToGPU();
     resetAccumulation();
     doneCurrent();
@@ -839,16 +856,33 @@ void OpenGLWindow::openOffMesh(const QVector<Mesh::Vertex> &verts,
     emit sceneReady();
 }
 
-void OpenGLWindow::openOBJmesh(const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount)
+void OpenGLWindow::openOBJmesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount)
 {
     makeCurrent();
+    QString meshName = filename;
+    meshName.remove(0,filename.lastIndexOf("/")+1);
+    meshName.remove(meshName.indexOf("."), meshName.size());
 
     Mesh* mesh = new Mesh();
     mesh->initialize(verts, idx);
     mesh->nbTriangles=faceCount;
     mesh->modelMatrix.setToIdentity();
 
+    int countName = 0;
+
     m_scene->addMesh(mesh);
+
+    for (int i = 0; i < m_scene->meshes().size(); ++i) {
+        if (meshName == m_scene->meshes()[i]->name){
+            countName++;
+        }
+    }
+
+    if (countName > 0){
+        meshName.insert(meshName.size(), QString::number(countName+1));
+    }
+    mesh->name = meshName;
+
     uploadSceneToGPU();
     resetAccumulation();
     doneCurrent();

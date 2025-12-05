@@ -19,6 +19,8 @@ public:
     Mesh();
     ~Mesh();
 
+    QString name;
+
     void initialize(const QVector<Vertex>& vertices, const QVector<unsigned int>& indices);
     void render();
     Material material(){return m_material;}

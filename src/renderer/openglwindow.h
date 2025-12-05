@@ -19,15 +19,14 @@ class OpenGLWindow : public QOpenGLWindow, protected QOpenGLFunctions_4_5_Core
 public:
     explicit OpenGLWindow(QWindow *parent = nullptr);
     ~OpenGLWindow();
-    void openOffMesh(const QVector<Mesh::Vertex> &verts,
-                     const QVector<unsigned int> &idx);
+    void openOffMesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx);
     static void loadOffFile(const QString &fileName,
                      QVector<Mesh::Vertex> &verts,
                      QVector<unsigned int> &idx);
     void changeScene();
     void resetScene();
 
-    void openOBJmesh(const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount);
+    void openOBJmesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount);
 
     // Transformation Matriciel avec les sliders
     void setAxeX(int value);
