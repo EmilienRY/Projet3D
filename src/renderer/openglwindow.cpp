@@ -8,8 +8,9 @@
 #include "scene/scene.h"
 #include "gpu_stucts.h"
 
+
 OpenGLWindow::OpenGLWindow(QWindow *parent)
-    : QOpenGLWindow(NoPartialUpdate, parent)
+    : QOpenGLWindow(QOpenGLWindow::NoPartialUpdate, parent)
 {
     m_scene = new Scene();
 }
@@ -661,8 +662,13 @@ void OpenGLWindow::keyPressEvent(QKeyEvent *ev)
     if (ev->key() == Qt::Key_Escape && m_fpsActive) {
         m_fpsActive = false;
         setCursor(Qt::ArrowCursor);
+    #if QT_VERSION >= QT_VERSION_CHECK(6,10,0)
         setKeyboardGrabEnabled(false);
         setMouseGrabEnabled(false);
+    #else
+        // QWindow (Qt < 6.10) doesn't provide keyboard/mouse grab API here.
+        // Cursor already restored above; keep no-op for compatibility.
+    #endif
         return;
     }
 
@@ -711,8 +717,13 @@ void OpenGLWindow::mousePressEvent(QMouseEvent *ev)
         m_fpsActive = true;
         m_lastMousePos = ev->position();
         setCursor(Qt::BlankCursor);
+    #if QT_VERSION >= QT_VERSION_CHECK(6,10,0)
         setKeyboardGrabEnabled(true);
         setMouseGrabEnabled(true);
+    #else
+        // QWindow (Qt < 6.10) doesn't provide keyboard/mouse grab API here.
+        // We avoid calling QWidget-only APIs; cursor is already hidden.
+    #endif
     }
 
 
@@ -740,8 +751,13 @@ void OpenGLWindow::focusOutEvent(QFocusEvent *ev)
     if (m_fpsActive) {
         m_fpsActive = false;
         setCursor(Qt::ArrowCursor);
-        setKeyboardGrabEnabled(false);
-        setMouseGrabEnabled(false);
+#if QT_VERSION >= QT_VERSION_CHECK(6,10,0)
+    setKeyboardGrabEnabled(false);
+    setMouseGrabEnabled(false);
+#else
+    // QWindow (Qt < 6.10) doesn't provide keyboard/mouse grab API here.
+    // No-op to remain compatible with older Qt versions.
+#endif
     }
 
     QOpenGLWindow::focusOutEvent(ev);

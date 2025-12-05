@@ -11,6 +11,7 @@ class mainWindow : public QMainWindow
 
 public:
     mainWindow(QWidget *parent = nullptr);
+    virtual ~mainWindow() = default;
 
 private slots:
     void openOffMesh();
