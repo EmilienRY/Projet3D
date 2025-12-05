@@ -62,10 +62,10 @@ private:
     std::vector<GLuint64> m_textureHandles;
     QMap<QString, int> m_textureMap;
     
-    void doRayTraceOffLine();
     void doRayTrace();
     void doRaster();
     void initTexSSBO();
+    void screenshot();
 
     QStatusBar * statusbar;
     bool m_useRaytracing = false;

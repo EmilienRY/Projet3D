@@ -1,3 +1,4 @@
+#include <QCoreApplication>
 #include "openglwindow.h"
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -547,89 +548,48 @@ void OpenGLWindow::doRayTrace()
     update();
 }
 
-void OpenGLWindow::doRayTraceOffLine()
+
+
+void OpenGLWindow::screenshot()
 {
-
-    printf("Launching off line ray tracing ...\n");
-
-    resetAccumulation();
-
-    qint64 now = m_frameTimer.elapsed();
-    float dt = (now - m_lastTimeMs) / 1000.0f;
-    m_lastTimeMs = now;
-
-    int gx = (width()+15)/16;
-    int gy = (height()+15)/16;
-
-    m_computeProgram->bind();
-
-    m_computeProgram->setUniformValue("u_sphereCount",  m_gpuSphereCount);
-    m_computeProgram->setUniformValue("u_lightCount",   m_gpuLightCount);
-    m_computeProgram->setUniformValue("u_squareCount",  m_gpuSquareCount);
-    m_computeProgram->setUniformValue("u_camPos",       m_camera.position());
-    m_computeProgram->setUniformValue("u_camFront",     m_camera.front());
-    m_computeProgram->setUniformValue("u_camRight",     m_camera.right());
-    m_computeProgram->setUniformValue("u_camUp",        m_camera.up());
-    m_computeProgram->setUniformValue("u_fovDeg",       60.0f);
-    m_computeProgram->setUniformValue("u_width",        width());
-    m_computeProgram->setUniformValue("u_height",       height());
-    m_computeProgram->setUniformValue("u_frameIndex",   m_accumFrame);
-    m_computeProgram->setUniformValue("u_triangleCount",  m_gpuTriangleCount);
-    m_computeProgram->setUniformValue("u_meshCount",  m_gpuMeshCount);
-    m_computeProgram->setUniformValue("u_maxBounces",  100);
-    m_computeProgram->setUniformValue("u_shadowSamples",  64);
-
-    int currentSpp  = 1;
-    m_computeProgram->setUniformValue("u_spp", currentSpp);
-
-    glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    glBindImageTexture(4, m_gBufferTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    glDispatchCompute(gx, gy, 1);
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
-    m_computeProgram->release();
-
-    qDebug() << "Saving offline render...";
-    
+    glBindTexture(GL_TEXTURE_2D, m_denoisedTex);
     int w = width();
     int h = height();
     std::vector<float> pixels(w * h * 4);
-    
-    glBindTexture(GL_TEXTURE_2D, m_currentTex);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixels.data());
     glBindTexture(GL_TEXTURE_2D, 0);
 
     QImage img(w, h, QImage::Format_RGBA8888);
-    for (int y = 0; y < h; ++y) {
-        for (int x = 0; x < w; ++x) {
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
             int idx = (y * w + x) * 4;
             float r = pixels[idx + 0];
             float g = pixels[idx + 1];
             float b = pixels[idx + 2];
-            
-            r = pow(std::min(std::max(r, 0.0f), 1.0f), 1.0f/2.2f);
-            g = pow(std::min(std::max(g, 0.0f), 1.0f), 1.0f/2.2f);
-            b = pow(std::min(std::max(b, 0.0f), 1.0f), 1.0f/2.2f);
-
-            img.setPixelColor(x, h - 1 - y, QColor::fromRgbF(r, g, b));
+            float a = pixels[idx + 3];
+            r = qMin(qMax(r, 0.0f), 1.0f);
+            g = qMin(qMax(g, 0.0f), 1.0f);
+            b = qMin(qMax(b, 0.0f), 1.0f);
+            a = qMin(qMax(a, 0.0f), 1.0f);
+            img.setPixelColor(x, h - y - 1, QColor::fromRgbF(r, g, b, a));
         }
     }
+
+    qDebug() << "Saving offline render...";
+        
+        
 
     QDir dir;
     if (!dir.exists("../../screenshots")) {
         dir.mkdir("../../screenshots");
     }
-    QString fileName = QString("../../screenshots/offline_%1.png")
-                           .arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
+    QString fileName = QString("../../screenshots/screen%1.png").arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
     if (img.save(fileName)) {
         qDebug() << "Saved to" << fileName;
     } else {
         qWarning() << "Failed to save" << fileName;
     }
 }
-
-
-
 
 
 void OpenGLWindow::doRaster()
@@ -793,7 +753,9 @@ void OpenGLWindow::keyPressEvent(QKeyEvent *ev)
     }
 
     if (ev->key() == Qt::Key_O) {
-        doRayTraceOffLine();
+        printf("screen");
+        screenshot();
+
     }
 
     m_keysPressed.insert(ev->key());
