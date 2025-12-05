@@ -189,6 +189,21 @@ void mainWindow::on_resetButton_clicked()
     rotationZslider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->rotation.z());
 
     scaleSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->scale * 10.0);
+
+    meshSelector->clear();
+
+    Scene* scene = m_glWindow->scene();
+    if (!scene) return;
+
+    const QVector<Mesh*>& meshes = scene->meshes();
+    for (int i = 0; i < meshes.size(); ++i) {
+        if (meshes[i]->name != nullptr) {
+            meshSelector->addItem(meshes[i]->name);
+        }
+        else{
+            meshSelector->addItem(QString("Mesh %1").arg(i));
+        }
+    }
 }
 
 void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale)
