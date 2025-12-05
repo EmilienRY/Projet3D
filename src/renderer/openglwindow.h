@@ -27,7 +27,9 @@ public:
     void changeScene();
     void resetScene();
 
-    // Opération Matriciel avec les sliders
+    void openOBJmesh(const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount);
+
+    // Transformation Matriciel avec les sliders
     void setAxeX(int value);
     void setAxeY(int value);
     void setAxeZ(int value);
@@ -121,5 +123,8 @@ private:
 
     signals:
         void sceneReady();
+        void sceneUpdate();
+        void selectedMeshChanged(int index, QVector3D position, QVector3D rota, float scale);
+
 
 };

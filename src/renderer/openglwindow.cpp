@@ -821,15 +821,44 @@ void OpenGLWindow::openOffMesh(const QVector<Mesh::Vertex> &verts,
     update();
 }
 
+void OpenGLWindow::openOBJmesh(const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount)
+{
+    makeCurrent();
+
+    Mesh* mesh = new Mesh();
+    mesh->initialize(verts, idx);
+    mesh->nbTriangles=faceCount;
+    mesh->modelMatrix.setToIdentity();
+
+    m_scene->addMesh(mesh);
+    uploadSceneToGPU();
+    resetAccumulation();
+    doneCurrent();
+    update();
+}
+
 void OpenGLWindow::setSelectedMesh(int index)
 {
     m_selectedMesh = index;
+
+    if (index >= 0 && index < m_scene->meshes().size()) {
+        QVector3D pos = m_scene->meshes()[m_selectedMesh]->position;
+        QVector3D rota = m_scene->meshes()[m_selectedMesh]->rotation;
+        float scale = m_scene->meshes()[m_selectedMesh]->scale;
+        emit selectedMeshChanged(index, pos, rota, scale);
+    }
+
+    update();
 }
 
 void OpenGLWindow::resetScene(){
     m_sceneIndex -=1;
     changeScene();
 }
+
+// void OpenGLWindow::sceneUpdate(){
+
+// }
 
 void OpenGLWindow::setAxeX(int value)
 {
@@ -932,4 +961,7 @@ void OpenGLWindow::setScale(int value)
 
     mesh->updateModelMatrix();
 }
+
+
+
 

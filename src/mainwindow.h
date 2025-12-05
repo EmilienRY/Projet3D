@@ -14,6 +14,9 @@ public:
 
 private slots:
     void openOffMesh();
+    void openObjMesh();
+    void onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale);
+
 
 private:
     OpenGLWindow *m_glWindow;

@@ -127,6 +127,7 @@ void Scene::buildPlaneSphere()
     sphere->initialize(sVerts, sIdx);
     sphere->modelMatrix.translate(0, 1, 0);
     sphere->isSphere=true;
+    sphere->position.setY(1.0);
     addMesh(sphere);
 
     Mesh* suzanne = new Mesh();
@@ -138,8 +139,14 @@ void Scene::buildPlaneSphere()
 
     suzanne->nbTriangles=nbTriangle;
     suzanne->initialize(meshVerts,meshIdx);
+
     suzanne->modelMatrix.translate(-1, 1, 2);
+    suzanne->position.setX(-1.0f);
+    suzanne->position.setY(1.0f);
+    suzanne->position.setZ(2.0f);
+
     suzanne->modelMatrix.scale(0.5);
+    suzanne->scale=0.5;
 
     Material cyan;
     cyan.color=QVector3D(0,1,1);
@@ -162,8 +169,14 @@ void Scene::buildPlaneSphere()
 
     suzanne2->nbTriangles=nbTriangle2;
     suzanne2->initialize(meshVerts2,meshIdx2);
+
     suzanne2->modelMatrix.translate(1, 1, 2);
+    suzanne2->position.setX(1.0f);
+    suzanne2->position.setY(1.0f);
+    suzanne2->position.setZ(2.0f);
+
     suzanne2->modelMatrix.scale(0.5);
+    suzanne2->scale=0.5;
 
     Material cyan2;
     cyan2.color=QVector3D(1,0,0);
@@ -443,7 +456,7 @@ void Scene::loadOffFile(QString &fileName,
 
 
 
-void Scene::loadObjFile(QString &fileName,
+void Scene::loadObjFile(const QString &fileName,
                         QVector<Mesh::Vertex> &verts,
                         QVector<unsigned int> &idx,
                         int &faceCount)

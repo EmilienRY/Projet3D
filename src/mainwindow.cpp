@@ -24,13 +24,17 @@ mainWindow::mainWindow(QWidget *parent)
 
     // --- Menu ---
     QMenu *menuFile = menuBar()->addMenu("File");
-    QAction *loadMesh3D = new QAction("Load Mesh 3D", this);
-    menuFile->addAction(loadMesh3D);
-    connect(loadMesh3D, &QAction::triggered, this, &mainWindow::openOffMesh);
+    QAction *loadOFF = new QAction("Load Mesh 3D (.off)", this);
+    QAction *loadOBJ = new QAction("Load Mesh 3D (.obj)", this);
+    menuFile->addAction(loadOFF);
+    connect(loadOFF, &QAction::triggered, this, &mainWindow::openOffMesh);
+    menuFile->addAction(loadOBJ);
+    connect(loadOBJ, &QAction::triggered, this, &mainWindow::openObjMesh);
 
     // --- Dock UI ---
     QDockWidget *dock = new QDockWidget("Scene Controls", this);
     dock->setAllowedAreas(Qt::RightDockWidgetArea);
+    dock->setFixedWidth(350);
 
     QWidget *dockContent = new QWidget();
     QFormLayout *layout = new QFormLayout();
@@ -63,9 +67,9 @@ mainWindow::mainWindow(QWidget *parent)
     ySlider = new QSlider(Qt::Horizontal);
     zSlider = new QSlider(Qt::Horizontal);
 
-    xSlider->setRange(-10, 10);
-    ySlider->setRange(-10, 10);
-    zSlider->setRange(-10, 10);
+    xSlider->setRange(-50, 50);
+    ySlider->setRange(-50, 50);
+    zSlider->setRange(-50, 50);
 
     layout->addRow("Translation X :", xSlider);
     layout->addRow("Translation Y :", ySlider);
@@ -88,6 +92,10 @@ mainWindow::mainWindow(QWidget *parent)
     scaleSlider = new QSlider(Qt::Horizontal);
     scaleSlider->setRange(1, 50);
     layout->addRow("Scale :", scaleSlider);
+
+    connect(m_glWindow, &OpenGLWindow::selectedMeshChanged,
+            this, &mainWindow::onMeshSelected);
+
 
     // --- Reset Button ---
     QPushButton *resetBtn = new QPushButton("Reset Scene");
@@ -113,13 +121,15 @@ mainWindow::mainWindow(QWidget *parent)
 
 void mainWindow::openOffMesh()
 {
-    QString fileName = QFileDialog::getOpenFileName(
-        this, "Select 3D mesh", QString(), "OFF Files (*.off)");
+    QFileDialog dialog(this);
+    dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+    dialog.setNameFilter("OFF Files (*.off)");
+    dialog.setWindowTitle("Select 3D mesh");
 
-    if (fileName.isEmpty())
+    if (dialog.exec() != QDialog::Accepted)
         return;
 
-    statusBar()->showMessage("Loading OFF...");
+    QString fileName = dialog.selectedFiles().first();
 
     QtConcurrent::run([this, fileName]() {
         QVector<Mesh::Vertex> verts;
@@ -134,19 +144,55 @@ void mainWindow::openOffMesh()
     });
 }
 
+void mainWindow::openObjMesh()
+{
+    QFileDialog dialog(this);
+    dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+    dialog.setNameFilter("OBJ Files (*.obj)");
+    dialog.setWindowTitle("Select 3D mesh");
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    QString fileName = dialog.selectedFiles().first();
+
+
+    QtConcurrent::run([this, fileName]() {
+        QVector<Mesh::Vertex> verts;
+        QVector<unsigned int> idx;
+        int faceCount;
+
+        m_glWindow->scene()->loadObjFile(fileName, verts, idx, faceCount);
+
+        QMetaObject::invokeMethod(m_glWindow, [=]() {
+            m_glWindow->openOBJmesh(verts, idx, faceCount);
+            statusBar()->showMessage("Mesh loaded");
+        });
+    });
+}
+
 void mainWindow::on_resetButton_clicked()
 {
     m_glWindow->resetScene();
+}
 
-    xSlider->setValue(0);
-    ySlider->setValue(0);
-    zSlider->setValue(0);
+void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale)
+{
+    // Bloquer le signal des sliders pour éviter les boucles
+    QSignalBlocker b1(xSlider);
+    QSignalBlocker b2(ySlider);
+    QSignalBlocker b3(zSlider);
 
-    rotationXslider->setValue(0);
-    rotationYslider->setValue(0);
-    rotationZslider->setValue(0);
+    // Initialiser les sliders selon la position
+    xSlider->setValue(pos.x() * 10);
+    ySlider->setValue(pos.y() * 10);
+    zSlider->setValue(pos.z() * 10);
 
-    scaleSlider->setValue(10); // exemple : scale = 1.0f
+    rotationXslider->setValue(rota.x());
+    rotationYslider->setValue(rota.y());
+    rotationZslider->setValue(rota.z());
+
+    scaleSlider->setValue(scale * 10.0);
 }
 
 
