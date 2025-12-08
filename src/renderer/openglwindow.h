@@ -42,6 +42,8 @@ public:
     void setSelectedMesh(int index);
     int m_selectedMesh = -1;
 
+    void changeColor(QColor color);
+
 protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;

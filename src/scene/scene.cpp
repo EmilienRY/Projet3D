@@ -201,15 +201,6 @@ void Scene::buildPlaneSphere()
     l.intensity= 25.2f;
     l.lightRadius = 1.1f;
     m_lights.append(l);
-
-    qDebug() << "nb mesh dans la scène" << m_meshes.size();
-    for (int i = 0; i < m_meshes.size(); ++i) {
-        qDebug() << "nb vertice dans le mesh" << m_meshes[i]->m_Vertices.size();
-        for (int j = 0; j < m_meshes[i]->m_Vertices.size(); ++j) {
-            m_meshes[i]->m_Vertices[j].color = m_meshes[i]->material().color;
-            qDebug() << "Vertex Color" << m_meshes[i]->m_Vertices[j].color;
-        }
-    }
 }
 
 

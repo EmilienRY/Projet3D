@@ -37,11 +37,11 @@ public:
     QVector<unsigned int> m_Indices;
     int nbTriangles;
     void updateModelMatrix();
+    Material m_material;
+    QOpenGLBuffer m_vbo;
 
 private:
-    QOpenGLBuffer m_vbo;
     QOpenGLBuffer m_ibo;
     QOpenGLVertexArrayObject m_vao;
     int m_indexCount;
-    Material m_material;
 };

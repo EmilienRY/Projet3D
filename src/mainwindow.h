@@ -39,6 +39,9 @@ private:
 
     QPalette *palette;
 
+signals :
+
+
 };
 
 #endif // MAINWINDOW_H

@@ -1104,6 +1104,28 @@ void OpenGLWindow::setScale(int value)
     resetAccumulation();
 }
 
+void OpenGLWindow::changeColor(QColor color){
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+
+    mesh->m_material.color=QVector3D(color.redF(), color.greenF(), color.blueF());
+
+    for (int j = 0; j < mesh->m_Vertices.size(); ++j) {
+        mesh->m_Vertices[j].color = QVector3D(color.redF(), color.greenF(), color.blueF());
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->m_vbo.bufferId());
+    glBufferSubData(GL_ARRAY_BUFFER, 0,
+                    mesh->m_Vertices.size() * sizeof(Mesh::Vertex),
+                    mesh->m_Vertices.data());
+
+
+    update();
+}
 
 
 

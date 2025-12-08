@@ -13,6 +13,7 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QFileDialog>
+#include <QColorDialog>
 
 mainWindow::mainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -106,8 +107,25 @@ mainWindow::mainWindow(QWidget *parent)
     connect(m_glWindow, &OpenGLWindow::fpsChanged, this, &mainWindow::updateFps);
 
     // --- Material ---
-    // palette = new QPalette();
-    // layout->addRow("Couleur diffuse du matériel",palette);
+
+    QPushButton *btnColor = new QPushButton("Changer Couleur");
+    layout->addRow("Couleur :", btnColor);
+
+    connect(btnColor, &QPushButton::clicked, this, [this]() {
+
+        QColorDialog *dialog = new QColorDialog(this);
+        dialog->setWindowTitle("Choisir une couleur");
+
+        connect(dialog, &QColorDialog::colorSelected,
+                this, [this](const QColor &c) {
+                    m_glWindow->changeColor(c); // fluide
+                });
+
+        dialog->open(); // ne bloque pas => aucun lag
+    });
+
+
+
 
 
 
