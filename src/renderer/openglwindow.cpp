@@ -1015,6 +1015,7 @@ void OpenGLWindow::setKs(int value)
 
     mesh->m_material.ks= (float)value / 100.0f ;
 
+    uploadSceneToGPU();
     update();
     resetAccumulation();
 }
@@ -1032,6 +1033,7 @@ void OpenGLWindow::setKd(int value)
     mesh->m_material.kd=(float)value / 100.0f ;
 
     update();
+    uploadSceneToGPU();
     resetAccumulation();
 }
 
@@ -1047,6 +1049,7 @@ void OpenGLWindow::setShininess(int value)
     mesh->m_material.shininess=(float)value;
 
     update();
+    uploadSceneToGPU();
     resetAccumulation();
 }
 
@@ -1063,6 +1066,7 @@ void OpenGLWindow::setAxeX(int value)
     mesh->updateModelMatrix();
 
     update();
+    uploadSceneToGPU();
     resetAccumulation();
 }
 
@@ -1079,6 +1083,7 @@ void OpenGLWindow::setAxeY(int value)
     mesh->updateModelMatrix();
 
     update();
+    uploadSceneToGPU();
     resetAccumulation();
 }
 
@@ -1095,6 +1100,7 @@ void OpenGLWindow::setAxeZ(int value)
     mesh->updateModelMatrix();
 
     update();
+    uploadSceneToGPU();
     resetAccumulation();
 }
 
@@ -1111,6 +1117,7 @@ void OpenGLWindow::setRotationX(int value)
     mesh->updateModelMatrix();
 
     update();
+    uploadSceneToGPU();
     resetAccumulation();
 }
 
@@ -1127,6 +1134,7 @@ void OpenGLWindow::setRotationY(int value)
     mesh->updateModelMatrix();
 
     update();
+    uploadSceneToGPU();
     resetAccumulation();
 }
 
@@ -1143,6 +1151,7 @@ void OpenGLWindow::setRotationZ(int value)
     mesh->updateModelMatrix();
 
     update();
+    uploadSceneToGPU();
     resetAccumulation();
 }
 
@@ -1164,6 +1173,7 @@ void OpenGLWindow::setScale(int value)
     mesh->updateModelMatrix();
 
     update();
+    uploadSceneToGPU();
     resetAccumulation();
 }
 
@@ -1188,6 +1198,7 @@ void OpenGLWindow::changeColor(QColor color){
 
     resetAccumulation();
     update();
+    uploadSceneToGPU();
 }
 
 
@@ -1209,6 +1220,7 @@ void OpenGLWindow::changeColorSpec(QColor color){
 
     resetAccumulation();
     update();
+    uploadSceneToGPU();
 }
 
 
