@@ -204,6 +204,44 @@ void Scene::buildPlaneSphere()
 }
 
 void Scene::buildEmptyScene(){
+    QVector<Mesh::Vertex> verts;
+    QVector<unsigned int> idx;
+
+    auto pushQuad = [&](QVector3D a, QVector3D b, QVector3D c, QVector3D d, QVector3D color) {
+        unsigned base = verts.size();
+        QVector3D n = QVector3D::crossProduct(b-a, c-a).normalized();
+        verts.append({a, n, color});
+        verts.append({b, n, color});
+        verts.append({c, n, color});
+        verts.append({d, n, color});
+        idx.append(base+0); idx.append(base+1); idx.append(base+2);
+        idx.append(base+2); idx.append(base+3); idx.append(base+0);
+    };
+
+    Material m1;
+    m1.color=QVector3D(0,1,0);
+
+    m1.kd = 1.;
+    m1.ks = 0.3;
+    m1.specularColor = QVector3D(1,1,1);
+    m1.shininess = 32;
+    m1.type=0;
+
+    // pushQuad(
+    //     {-3,0.,-3},
+    //     {-3,0.,3},
+    //     {3,0.,3},
+    //     {3,0.,-3},
+    //     {0.0f, 1.0f, 0.0f}
+    //     );
+
+    // Mesh* plane = new Mesh();
+    // plane->name = "plan";
+    // plane->addMaterial(m1);
+    // plane->initialize(verts, idx);
+    // plane->isSquare=true;
+    // addMesh(plane);
+
     Light l;
     l.position = QVector3D(2.0f, 4.0f, 2.0f);
     l.color    = QVector3D(1.0f, 1.f, 1.f);

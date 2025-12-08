@@ -962,11 +962,15 @@ void OpenGLWindow::setSelectedMesh(int index)
 {
     m_selectedMesh = index;
 
+    if (!m_scene || m_scene->meshes().isEmpty()) {
+        return;
+    }
+
     if (index >= 0 && index < m_scene->meshes().size()) {
-        QVector3D pos = m_scene->meshes()[m_selectedMesh]->position;
-        QVector3D rota = m_scene->meshes()[m_selectedMesh]->rotation;
-        float scale = m_scene->meshes()[m_selectedMesh]->scale;
-        Material mat = m_scene->meshes()[m_selectedMesh]->material();
+        QVector3D pos = m_scene->meshes()[index]->position;
+        QVector3D rota = m_scene->meshes()[index]->rotation;
+        float scale = m_scene->meshes()[index]->scale;
+        Material mat = m_scene->meshes()[index]->material();
         emit selectedMeshChanged(index, pos, rota, scale, mat);
     }
 
@@ -974,11 +978,17 @@ void OpenGLWindow::setSelectedMesh(int index)
 }
 
 void OpenGLWindow::setSelectedLight(int index){
+    m_selectedLight = index;
+    
+    if (!m_scene || m_scene->lights().isEmpty()) {
+        return;
+    }
+    
     if (index >= 0 && index < m_scene->lights().size()) {
-        QVector3D pos = m_scene->lights()[m_selectedMesh].position;
-        QVector3D color = m_scene->lights()[m_selectedMesh].color;
-        float intensity = m_scene->lights()[m_selectedMesh].intensity;
-        float radius = m_scene->lights()[m_selectedMesh].lightRadius;
+        QVector3D pos = m_scene->lights()[index].position;
+        QVector3D color = m_scene->lights()[index].color;
+        float intensity = m_scene->lights()[index].intensity;
+        float radius = m_scene->lights()[index].lightRadius;
         emit selectedLightChanged(index, pos, color, intensity, radius);
     }
 
@@ -996,7 +1006,7 @@ void OpenGLWindow::resetScene(){
 
 void OpenGLWindow::setKs(int value)
 {
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1012,7 +1022,7 @@ void OpenGLWindow::setKs(int value)
 
 void OpenGLWindow::setKd(int value)
 {
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1027,7 +1037,7 @@ void OpenGLWindow::setKd(int value)
 
 void OpenGLWindow::setShininess(int value)
 {
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1042,7 +1052,7 @@ void OpenGLWindow::setShininess(int value)
 
 void OpenGLWindow::setAxeX(int value)
 {
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1058,7 +1068,7 @@ void OpenGLWindow::setAxeX(int value)
 
 void OpenGLWindow::setAxeY(int value)
 {
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1074,7 +1084,7 @@ void OpenGLWindow::setAxeY(int value)
 
 void OpenGLWindow::setAxeZ(int value)
 {
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1090,7 +1100,7 @@ void OpenGLWindow::setAxeZ(int value)
 
 void OpenGLWindow::setRotationX(int value)
 {
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1106,7 +1116,7 @@ void OpenGLWindow::setRotationX(int value)
 
 void OpenGLWindow::setRotationY(int value)
 {
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1122,7 +1132,7 @@ void OpenGLWindow::setRotationY(int value)
 
 void OpenGLWindow::setRotationZ(int value)
 {
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1138,7 +1148,7 @@ void OpenGLWindow::setRotationZ(int value)
 
 void OpenGLWindow::setScale(int value)
 {
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1158,7 +1168,7 @@ void OpenGLWindow::setScale(int value)
 }
 
 void OpenGLWindow::changeColor(QColor color){
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
@@ -1183,7 +1193,7 @@ void OpenGLWindow::changeColor(QColor color){
 
 
 void OpenGLWindow::changeColorSpec(QColor color){
-    if (!m_scene) return;
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
     const QVector<Mesh*>& meshes = m_scene->meshes();
     if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;

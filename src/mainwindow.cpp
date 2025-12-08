@@ -273,28 +273,32 @@ void mainWindow::openObjMesh()
 void mainWindow::on_resetButton_clicked()
 {
     m_glWindow->resetScene();
-    xSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->position.x()* 10);
-    ySlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->position.y()* 10);
-    zSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->position.z()* 10);
-
-
-    rotationXslider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->rotation.x());
-    rotationYslider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->rotation.y());
-    rotationZslider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->rotation.z());
-
-    scaleSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->scale * 10.0);
-
-    kdSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->material().kd *10);
-    ksSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->material().ks *10);
-
-    shininessSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->material().shininess);
-
-    meshSelector->clear();
-
+    
     Scene* scene = m_glWindow->scene();
     if (!scene) return;
 
     const QVector<Mesh*>& meshes = scene->meshes();
+    
+    // Vérifier si la scène contient des meshes et si l'index est valide
+    if (!meshes.isEmpty() && m_glWindow->m_selectedMesh >= 0 && m_glWindow->m_selectedMesh < meshes.size()) {
+        xSlider->setValue(meshes[m_glWindow->m_selectedMesh]->position.x() * 10);
+        ySlider->setValue(meshes[m_glWindow->m_selectedMesh]->position.y() * 10);
+        zSlider->setValue(meshes[m_glWindow->m_selectedMesh]->position.z() * 10);
+
+        rotationXslider->setValue(meshes[m_glWindow->m_selectedMesh]->rotation.x());
+        rotationYslider->setValue(meshes[m_glWindow->m_selectedMesh]->rotation.y());
+        rotationZslider->setValue(meshes[m_glWindow->m_selectedMesh]->rotation.z());
+
+        scaleSlider->setValue(meshes[m_glWindow->m_selectedMesh]->scale * 10.0);
+
+        kdSlider->setValue(meshes[m_glWindow->m_selectedMesh]->material().kd * 100);
+        ksSlider->setValue(meshes[m_glWindow->m_selectedMesh]->material().ks * 100);
+
+        shininessSlider->setValue(meshes[m_glWindow->m_selectedMesh]->material().shininess);
+    }
+
+    meshSelector->clear();
+    
     for (int i = 0; i < meshes.size(); ++i) {
         if (meshes[i]->name != nullptr) {
             meshSelector->addItem(meshes[i]->name);
