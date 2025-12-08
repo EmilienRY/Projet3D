@@ -389,12 +389,22 @@ void Scene::buildCornellBox()
     addMesh(squirrel);
 
     Light l;
-    l.position  = QVector3D(0, 2.8f, 0);
-    l.color     = QVector3D(1.0,1.0,1.0);
+    l.position  = QVector3D(-1.5, 2.8f, 0);
+    l.color     = QVector3D(0.75,0.25,0.54);
     l.intensity = 10.0f;
     l.lightRadius = 1.1f;
 
     m_lights.append(l);
+
+
+    Light l2;
+    l2.position  = QVector3D(1.5, 1.8f, 0);
+    l2.color     = QVector3D(0.75,0.25,0.0);
+    l2.intensity = 10.0f;
+    l2.lightRadius = 0.1f;
+
+
+    m_lights.append(l2);
 }
 
 void Scene::loadOffFile(QString &fileName,

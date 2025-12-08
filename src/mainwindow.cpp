@@ -32,7 +32,6 @@ mainWindow::mainWindow(QWidget *parent)
     menuFile->addAction(loadOBJ);
     connect(loadOBJ, &QAction::triggered, this, &mainWindow::openObjMesh);
 
-    // --- Dock UI ---
     QDockWidget *dock = new QDockWidget("Scene Controls", this);
     dock->setAllowedAreas(Qt::RightDockWidgetArea);
     dock->setFixedWidth(350);
@@ -40,11 +39,9 @@ mainWindow::mainWindow(QWidget *parent)
     QWidget *dockContent = new QWidget();
     QFormLayout *layout = new QFormLayout();
 
-    // --- ComboBox : Sélection du mesh ---
     meshSelector = new QComboBox();
     layout->addRow("Mesh sélectionné :", meshSelector);
 
-    // Charger les meshes déjà présents dans la scène
 
     connect(m_glWindow, &OpenGLWindow::sceneReady, this, [this]() {
 
@@ -114,22 +111,19 @@ mainWindow::mainWindow(QWidget *parent)
     connect(btnColor, &QPushButton::clicked, this, [this]() {
 
         QColorDialog *dialog = new QColorDialog(this);
+        dialog->setOption(QColorDialog::DontUseNativeDialog, true);
         dialog->setWindowTitle("Choisir une couleur");
 
         connect(dialog, &QColorDialog::colorSelected,
                 this, [this](const QColor &c) {
-                    m_glWindow->changeColor(c); // fluide
+                    m_glWindow->changeColor(c);
                 });
 
-        dialog->open(); // ne bloque pas => aucun lag
+        dialog->open();
     });
 
 
 
-
-
-
-    // --- Reset Button ---
     QPushButton *resetBtn = new QPushButton("Reset Scene");
     layout->addRow(resetBtn);
 
@@ -137,7 +131,6 @@ mainWindow::mainWindow(QWidget *parent)
     dock->setWidget(dockContent);
     addDockWidget(Qt::RightDockWidgetArea, dock);
 
-    // --- Connexions Sliders -> OpenGL ---
     connect(xSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setAxeX);
     connect(ySlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setAxeY);
     connect(zSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setAxeZ);
@@ -237,12 +230,10 @@ void mainWindow::on_resetButton_clicked()
 
 void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale)
 {
-    // Bloquer le signal des sliders pour éviter les boucles
     QSignalBlocker b1(xSlider);
     QSignalBlocker b2(ySlider);
     QSignalBlocker b3(zSlider);
 
-    // Initialiser les sliders selon la position
     xSlider->setValue(pos.x() * 10);
     ySlider->setValue(pos.y() * 10);
     zSlider->setValue(pos.z() * 10);
