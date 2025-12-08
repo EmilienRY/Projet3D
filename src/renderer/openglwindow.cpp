@@ -28,7 +28,7 @@ OpenGLWindow::~OpenGLWindow()
 
 void OpenGLWindow::changeScene()
 {
-    m_sceneIndex = (m_sceneIndex + 1) % 2;
+    m_sceneIndex = (m_sceneIndex + 1) % 3;
 
     makeCurrent();
     if (m_sceneIndex == 0)
@@ -40,6 +40,10 @@ void OpenGLWindow::changeScene()
     {
         m_scene->clear();
         m_scene->buildCornellBox();
+    }
+    else{
+        m_scene->clear();
+        m_scene->buildEmptyScene();
     }
     uploadSceneToGPU();
     resetAccumulation();
@@ -962,7 +966,20 @@ void OpenGLWindow::setSelectedMesh(int index)
         QVector3D pos = m_scene->meshes()[m_selectedMesh]->position;
         QVector3D rota = m_scene->meshes()[m_selectedMesh]->rotation;
         float scale = m_scene->meshes()[m_selectedMesh]->scale;
-        emit selectedMeshChanged(index, pos, rota, scale);
+        Material mat = m_scene->meshes()[m_selectedMesh]->material();
+        emit selectedMeshChanged(index, pos, rota, scale, mat);
+    }
+
+    update();
+}
+
+void OpenGLWindow::setSelectedLight(int index){
+    if (index >= 0 && index < m_scene->lights().size()) {
+        QVector3D pos = m_scene->lights()[m_selectedMesh].position;
+        QVector3D color = m_scene->lights()[m_selectedMesh].color;
+        float intensity = m_scene->lights()[m_selectedMesh].intensity;
+        float radius = m_scene->lights()[m_selectedMesh].lightRadius;
+        emit selectedLightChanged(index, pos, color, intensity, radius);
     }
 
     update();
@@ -1003,6 +1020,21 @@ void OpenGLWindow::setKd(int value)
     Mesh* mesh = meshes[m_selectedMesh];
 
     mesh->m_material.kd=(float)value / 100.0f ;
+
+    update();
+    resetAccumulation();
+}
+
+void OpenGLWindow::setShininess(int value)
+{
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+
+    mesh->m_material.shininess=(float)value;
 
     update();
     resetAccumulation();

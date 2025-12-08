@@ -74,9 +74,9 @@ mainWindow::mainWindow(QWidget *parent)
     ySlider->setRange(-50, 50);
     zSlider->setRange(-50, 50);
 
-    layout->addRow("Translation X :", xSlider);
-    layout->addRow("Translation Y :", ySlider);
-    layout->addRow("Translation Z :", zSlider);
+    layout->addRow(QString("Translation X : %1").arg(xSlider->value()/10), xSlider);
+    layout->addRow(QString("Translation Y : %1").arg(ySlider->value()/10), ySlider);
+    layout->addRow(QString("Translation Z : %1").arg(zSlider->value()/10), zSlider);
 
     // --- Sliders Rotation ---
     rotationXslider = new QSlider(Qt::Horizontal);
@@ -87,14 +87,14 @@ mainWindow::mainWindow(QWidget *parent)
     rotationYslider->setRange(0, 360);
     rotationZslider->setRange(0, 360);
 
-    layout->addRow("Rotation X :", rotationXslider);
-    layout->addRow("Rotation Y :", rotationYslider);
-    layout->addRow("Rotation Z :", rotationZslider);
+    layout->addRow(QString("Rotation X : %1").arg(rotationXslider->value()), rotationXslider);
+    layout->addRow(QString("Rotation Y : %1").arg(rotationYslider->value()), rotationYslider);
+    layout->addRow(QString("Rotation Z : %1").arg(rotationZslider->value()), rotationZslider);
 
     // --- Scale ---
     scaleSlider = new QSlider(Qt::Horizontal);
     scaleSlider->setRange(1, 50);
-    layout->addRow("Scale :", scaleSlider);
+    layout->addRow(QString("Scale : %1").arg(scaleSlider->value()/10), scaleSlider);
 
     connect(m_glWindow, &OpenGLWindow::selectedMeshChanged,
             this, &mainWindow::onMeshSelected);
@@ -149,9 +149,47 @@ mainWindow::mainWindow(QWidget *parent)
     ksSlider->setRange(0, 100);
     kdSlider->setRange(0, 100);
 
-    layout->addRow("ks :", ksSlider);
-    layout->addRow("kd :", kdSlider);
+    layout->addRow(QString("ks : %1").arg(ksSlider->value()/100), ksSlider);
+    layout->addRow(QString("kd : %1").arg(kdSlider->value()/100), kdSlider);
 
+    shininessSlider = new QSlider(Qt::Horizontal);
+    shininessSlider->setRange(1, 200);
+    layout->addRow(QString("Shininess : %1").arg(shininessSlider->value()), shininessSlider);
+
+    // Light
+
+    lightSelector = new QComboBox();
+    layout->addRow("Light sélectionné :", lightSelector);
+
+
+    connect(m_glWindow, &OpenGLWindow::sceneReady, this, [this]() {
+
+        lightSelector->clear();
+
+        Scene* scene = m_glWindow->scene();
+        if (!scene) return;
+
+        const QVector<Light>& lights = scene->lights();
+        for (int i = 0; i < lights.size(); ++i) {
+            lightSelector->addItem(QString("Light %1").arg(i));
+        }
+    });
+
+
+    connect(lightSelector, &QComboBox::currentIndexChanged,
+            m_glWindow, &OpenGLWindow::setSelectedLight);
+
+    xLightSlider = new QSlider(Qt::Horizontal);
+    yLightSlider = new QSlider(Qt::Horizontal);
+    zLightSlider = new QSlider(Qt::Horizontal);
+
+    xLightSlider->setRange(-50, 50);
+    yLightSlider->setRange(-50, 50);
+    zLightSlider->setRange(-50, 50);
+
+    layout->addRow(QString("Light Translation X : %1").arg(xLightSlider->value()/10), xLightSlider);
+    layout->addRow(QString("Light Translation Y : %1").arg(yLightSlider->value()/10), yLightSlider);
+    layout->addRow(QString("Light Translation Z : %1").arg(zLightSlider->value()/10), zLightSlider);
 
 
     QPushButton *resetBtn = new QPushButton("Reset Scene");
@@ -173,6 +211,7 @@ mainWindow::mainWindow(QWidget *parent)
     connect(kdSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setKd);
 
     connect(scaleSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setScale);
+    connect(shininessSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setShininess);
 
     connect(resetBtn, &QPushButton::clicked, this, &mainWindow::on_resetButton_clicked);
 }
@@ -245,6 +284,11 @@ void mainWindow::on_resetButton_clicked()
 
     scaleSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->scale * 10.0);
 
+    kdSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->material().kd *10);
+    ksSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->material().ks *10);
+
+    shininessSlider->setValue(m_glWindow->scene()->meshes()[m_glWindow->m_selectedMesh]->material().shininess);
+
     meshSelector->clear();
 
     Scene* scene = m_glWindow->scene();
@@ -261,7 +305,7 @@ void mainWindow::on_resetButton_clicked()
     }
 }
 
-void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale)
+void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale, Material mat)
 {
     QSignalBlocker b1(xSlider);
     QSignalBlocker b2(ySlider);
@@ -276,6 +320,23 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     rotationZslider->setValue(rota.z());
 
     scaleSlider->setValue(scale * 10.0);
+
+    kdSlider->setValue(mat.kd *100);
+    ksSlider->setValue(mat.ks *100);
+
+    shininessSlider->setValue(mat.shininess);
+}
+
+void mainWindow::onLighthSelected(int index, const QVector3D &pos, const QVector3D &color, const float &intensity, float mat)
+{
+    QSignalBlocker b1(xLightSlider);
+    QSignalBlocker b2(yLightSlider);
+    QSignalBlocker b3(zLightSlider);
+
+    xLightSlider->setValue(pos.x() * 10);
+    yLightSlider->setValue(pos.y() * 10);
+    zLightSlider->setValue(pos.z() * 10);
+
 }
 
 void mainWindow::updateFps(float fps)

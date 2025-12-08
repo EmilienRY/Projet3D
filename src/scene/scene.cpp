@@ -203,6 +203,15 @@ void Scene::buildPlaneSphere()
     m_lights.append(l);
 }
 
+void Scene::buildEmptyScene(){
+    Light l;
+    l.position = QVector3D(2.0f, 4.0f, 2.0f);
+    l.color    = QVector3D(1.0f, 1.f, 1.f);
+    l.intensity= 25.2f;
+    l.lightRadius = 1.1f;
+    m_lights.append(l);
+}
+
 
 void Scene::buildCornellBox()
 {

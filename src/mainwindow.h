@@ -3,6 +3,7 @@
 #include <QMainWindow>
 #include <QComboBox>
 #include <QLabel>
+#include "scene/material.h"
 
 class OpenGLWindow;
 
@@ -17,13 +18,15 @@ public:
 private slots:
     void openOffMesh();
     void openObjMesh();
-    void onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale);
+    void onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale, Material mat);
+    void onLighthSelected(int index, const QVector3D &pos, const QVector3D &color, const float &inten, float radius);
     void updateFps(float fps);
 
 
 private:
     OpenGLWindow *m_glWindow;
     QComboBox *meshSelector;
+    QComboBox *lightSelector;
     void on_resetButton_clicked();
 
     QSlider *xSlider;
@@ -36,8 +39,14 @@ private:
 
     QSlider *ksSlider;
     QSlider *kdSlider;
+    QSlider *shininessSlider;
 
     QSlider *scaleSlider;
+
+    QSlider *xLightSlider;
+    QSlider *yLightSlider;
+    QSlider *zLightSlider;
+
     QLabel *fpsLabel;
 
     QPalette *palette;
