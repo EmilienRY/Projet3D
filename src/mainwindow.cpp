@@ -105,6 +105,11 @@ mainWindow::mainWindow(QWidget *parent)
     layout->addRow("FPS :", fpsLabel);
     connect(m_glWindow, &OpenGLWindow::fpsChanged, this, &mainWindow::updateFps);
 
+    // --- Material ---
+    // palette = new QPalette();
+    // layout->addRow("Couleur diffuse du matériel",palette);
+
+
 
     // --- Reset Button ---
     QPushButton *resetBtn = new QPushButton("Reset Scene");
@@ -141,10 +146,11 @@ void mainWindow::openOffMesh()
     QString fileName = dialog.selectedFiles().first();
 
     QtConcurrent::run([this, fileName]() {
+        Material mat;
         QVector<Mesh::Vertex> verts;
         QVector<unsigned int> idx;
 
-        m_glWindow->loadOffFile(fileName, verts, idx);
+        m_glWindow->loadOffFile(fileName, verts, idx, mat);
 
         QMetaObject::invokeMethod(this, [=]() {
             m_glWindow->openOffMesh(fileName, verts, idx);
@@ -170,8 +176,9 @@ void mainWindow::openObjMesh()
         QVector<Mesh::Vertex> verts;
         QVector<unsigned int> idx;
         int faceCount;
+        Material mat;
 
-        m_glWindow->scene()->loadObjFile(fileName, verts, idx, faceCount);
+        m_glWindow->scene()->loadObjFile(fileName, verts, idx, faceCount,mat);
 
         QMetaObject::invokeMethod(m_glWindow, [=]() {
             m_glWindow->openOBJmesh(fileName, verts, idx, faceCount);

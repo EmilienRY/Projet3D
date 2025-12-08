@@ -28,7 +28,8 @@ void Scene::clear()
 void generateSphereMesh(float radius,
                         int stacks, int slices,
                         QVector<Mesh::Vertex>& verts,
-                        QVector<unsigned int>& idx)
+                        QVector<unsigned int>& idx,
+                        Material mat)
 {
     verts.clear();
     idx.clear();
@@ -47,7 +48,7 @@ void generateSphereMesh(float radius,
 
             verts.append({ QVector3D(x, y, z),
                           QVector3D(x, y, z).normalized(),
-                          QVector3D(1,1,1) });
+                          mat.color });
         }
     }
 
@@ -85,14 +86,6 @@ void Scene::buildPlaneSphere()
         idx.append(base+2); idx.append(base+3); idx.append(base+0);
     };
 
-    pushQuad(
-        {-3,0.,-3},
-        {-3,0.,3},
-        {3,0.,3},
-        {3,0.,-3},
-        {0.7f, 0.7f, 0.7f}
-        );
-
     Material m1;
     m1.color=QVector3D(0,1,0);
 
@@ -101,6 +94,40 @@ void Scene::buildPlaneSphere()
     m1.specularColor = QVector3D(1,1,1);
     m1.shininess = 32;
     m1.type=0;
+
+    Material cyan;
+    cyan.color=QVector3D(0,1,1);
+
+    cyan.kd = 1.;
+    cyan.ks = 0.3;
+    cyan.specularColor = QVector3D(1,1,1);
+    cyan.shininess = 32;
+    cyan.type=0;
+
+    Material cyan2;
+    cyan2.color=QVector3D(1,0,0);
+
+    cyan2.kd = 0.7;
+    cyan2.ks = 0.7;
+    cyan2.specularColor = QVector3D(1,1,1);
+    cyan2.shininess = 32;
+    cyan2.type=0;
+
+    Material m2;
+    m2.color=QVector3D(1.0, 0., 0.);;
+    m2.kd = 0.5;
+    m2.ks = 0.6;
+    m2.specularColor = QVector3D(1.0,1.0,1.0);
+    m2.shininess = 128;
+    m2.type = 1;
+
+    pushQuad(
+        {-3,0.,-3},
+        {-3,0.,3},
+        {3,0.,3},
+        {3,0.,-3},
+        {0.0f, 1.0f, 0.0f}
+        );
 
     Mesh* plane = new Mesh();
     plane->name = "plan";
@@ -112,16 +139,7 @@ void Scene::buildPlaneSphere()
     QVector<Mesh::Vertex> sVerts;
     QVector<unsigned int> sIdx;
 
-    generateSphereMesh(1.0f, 20, 20, sVerts, sIdx);
-
-    Material m2;
-    m2.color=QVector3D(1.0, 0., 0.);;
-    m2.kd = 0.5;
-    m2.ks = 0.6;
-    m2.specularColor = QVector3D(1.0,1.0,1.0);
-    m2.shininess = 128;
-    m2.type = 1;
-
+    generateSphereMesh(1.0f, 20, 20, sVerts, sIdx, m2);
 
     Mesh* sphere = new Mesh();
     sphere->name = "sphere";
@@ -138,7 +156,7 @@ void Scene::buildPlaneSphere()
     QVector<unsigned int> meshIdx;
     int nbTriangle;
     QString meshFile = "../../meshes/suzanne.obj";
-    loadObjFile(meshFile, meshVerts, meshIdx, nbTriangle);
+    loadObjFile(meshFile, meshVerts, meshIdx, nbTriangle,cyan);
 
     suzanne->nbTriangles=nbTriangle;
     suzanne->initialize(meshVerts,meshIdx);
@@ -151,15 +169,6 @@ void Scene::buildPlaneSphere()
     suzanne->modelMatrix.scale(0.5);
     suzanne->scale=0.5;
 
-    Material cyan;
-    cyan.color=QVector3D(0,1,1);
-
-    cyan.kd = 1.;
-    cyan.ks = 0.3;
-    cyan.specularColor = QVector3D(1,1,1);
-    cyan.shininess = 32;
-    cyan.type=0;
-
     suzanne->addMaterial(cyan);
     addMesh(suzanne);
 
@@ -169,7 +178,7 @@ void Scene::buildPlaneSphere()
     QVector<unsigned int> meshIdx2;
     int nbTriangle2;
     QString meshFile2 = "../../meshes/suzanne.obj";
-    loadObjFile(meshFile2, meshVerts2, meshIdx2, nbTriangle2);
+    loadObjFile(meshFile2, meshVerts2, meshIdx2, nbTriangle2, cyan2);
 
     suzanne2->nbTriangles=nbTriangle2;
     suzanne2->initialize(meshVerts2,meshIdx2);
@@ -182,15 +191,6 @@ void Scene::buildPlaneSphere()
     suzanne2->modelMatrix.scale(0.5);
     suzanne2->scale=0.5;
 
-    Material cyan2;
-    cyan2.color=QVector3D(1,0,0);
-
-    cyan2.kd = 0.7;
-    cyan2.ks = 0.7;
-    cyan2.specularColor = QVector3D(1,1,1);
-    cyan2.shininess = 32;
-    cyan2.type=0;
-
     suzanne2->addMaterial(cyan2);
     addMesh(suzanne2);
 
@@ -201,6 +201,15 @@ void Scene::buildPlaneSphere()
     l.intensity= 25.2f;
     l.lightRadius = 1.1f;
     m_lights.append(l);
+
+    qDebug() << "nb mesh dans la scène" << m_meshes.size();
+    for (int i = 0; i < m_meshes.size(); ++i) {
+        qDebug() << "nb vertice dans le mesh" << m_meshes[i]->m_Vertices.size();
+        for (int j = 0; j < m_meshes[i]->m_Vertices.size(); ++j) {
+            m_meshes[i]->m_Vertices[j].color = m_meshes[i]->material().color;
+            qDebug() << "Vertex Color" << m_meshes[i]->m_Vertices[j].color;
+        }
+    }
 }
 
 
@@ -255,6 +264,33 @@ void Scene::buildCornellBox()
     green.kd = 0.9f; green.ks = 0.0f; green.type=0;
     green.specularColor = QVector3D(1.0,1.0,1.0); green.shininess = 32;
 
+    Material matteBlue;
+    matteBlue.color = QVector3D(0.2f, 0.2f, 0.9f);
+    matteBlue.kd = 1.0f;
+    matteBlue.ks = 0.0f;
+    matteBlue.specularColor = QVector3D(0,0,0);
+    matteBlue.shininess = 1;
+    matteBlue.type = 0;
+    matteBlue.texturePath = "../../textures/sanic.png";
+
+    Material matteGreen;
+    matteGreen.color = QVector3D(0.2f, 0.2f, 0.9f);
+    matteGreen.kd = 1.0f;
+    matteGreen.ks = 0.0f;
+    matteGreen.specularColor = QVector3D(0,0,0);
+    matteGreen.shininess = 1;
+    matteGreen.type = 0;
+
+    matteGreen.texturePath = "../../textures/sanic.png";
+
+    Material matteRed;
+    matteRed.color = QVector3D(1.0f, 0.0f, 0.0f);
+    matteRed.kd = 1.0f;
+    matteRed.ks = 0.0f;
+    matteRed.specularColor = QVector3D(0,0,0);
+    matteRed.shininess = 1;
+    matteRed.type = 0;
+
     auto makeQuad = [&](QVector3D a, QVector3D b, QVector3D c, QVector3D d, Material mat, QString name)
     {
         QVector<Mesh::Vertex> verts;
@@ -290,14 +326,13 @@ void Scene::buildCornellBox()
 
     QVector<Mesh::Vertex> sVerts;
     QVector<unsigned int> sIdx;
-    generateSphereMesh(1.0f, 20, 20, sVerts, sIdx);
 
     Mesh* suzanne = new Mesh();
     QVector<Mesh::Vertex> meshVerts;
     QVector<unsigned int> meshIdx;
     int nbTriangle;
     QString meshFile = "../../meshes/chat.obj";
-    loadObjFile(meshFile, meshVerts, meshIdx, nbTriangle);
+    loadObjFile(meshFile, meshVerts, meshIdx, nbTriangle,matteGreen);
     suzanne->name = "chat";
 
     suzanne->nbTriangles=nbTriangle;
@@ -316,18 +351,10 @@ void Scene::buildCornellBox()
     // gold.shininess = 128;
     // gold.type = 1;
 
-    Material matteGreen;
-    matteGreen.color = QVector3D(0.2f, 0.2f, 0.9f);
-    matteGreen.kd = 1.0f;
-    matteGreen.ks = 0.0f;
-    matteGreen.specularColor = QVector3D(0,0,0);
-    matteGreen.shininess = 1;
-    matteGreen.type = 0;
-
-    matteGreen.texturePath = "../../textures/sanic.png";
-
     suzanne->addMaterial(matteGreen);
     addMesh(suzanne);
+
+    generateSphereMesh(1.0f, 20, 20, sVerts, sIdx,matteBlue);
 
     Mesh* s2 = new Mesh();
     s2->name = "sphere sanic";
@@ -336,17 +363,10 @@ void Scene::buildCornellBox()
     s2->modelMatrix.translate(-2.f, 2.0f, -2.0f);
     s2->position = QVector3D(-2.0f, 2.0f, -2.0f);
 
-    Material matteBlue;
-    matteBlue.color = QVector3D(0.2f, 0.2f, 0.9f);
-    matteBlue.kd = 1.0f;
-    matteBlue.ks = 0.0f;
-    matteBlue.specularColor = QVector3D(0,0,0);
-    matteBlue.shininess = 1;
-    matteBlue.type = 0;
-    matteBlue.texturePath = "../../textures/sanic.png";
-
     s2->addMaterial(matteBlue);
     addMesh(s2);
+
+    generateSphereMesh(1.0f, 20, 20, sVerts, sIdx,verre);
 
     Mesh* s3 = new Mesh();
     s3->name = "sphere verre";
@@ -363,7 +383,7 @@ void Scene::buildCornellBox()
     QVector<unsigned int> meshIdxSquirrel;
     int nbTrianglesSquirrel;
     QString meshFileSquirrel = "../../meshes/suzanne.obj";
-    loadObjFile(meshFileSquirrel, meshVertsSquirrel, meshIdxSquirrel, nbTrianglesSquirrel);
+    loadObjFile(meshFileSquirrel, meshVertsSquirrel, meshIdxSquirrel, nbTrianglesSquirrel, matteRed);
 
     squirrel->nbTriangles=nbTrianglesSquirrel;
     squirrel->initialize(meshVertsSquirrel,meshIdxSquirrel);
@@ -373,14 +393,6 @@ void Scene::buildCornellBox()
 
     squirrel->modelMatrix.scale(1.2f);
     squirrel->scale = 1.2f;
-
-    Material matteRed;
-    matteRed.color = QVector3D(1.0f, 0.0f, 0.0f);
-    matteRed.kd = 1.0f;
-    matteRed.ks = 0.0f;
-    matteRed.specularColor = QVector3D(0,0,0);
-    matteRed.shininess = 1;
-    matteRed.type = 0;
 
     squirrel->addMaterial(matteRed);
     addMesh(squirrel);
@@ -477,7 +489,8 @@ void Scene::loadOffFile(QString &fileName,
 void Scene::loadObjFile(const QString &fileName,
                         QVector<Mesh::Vertex> &verts,
                         QVector<unsigned int> &idx,
-                        int &faceCount)
+                        int &faceCount,
+                        Material mat)
 {
     QFile file(fileName);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -495,7 +508,16 @@ void Scene::loadObjFile(const QString &fileName,
     idx.clear();
     faceCount = 0;
 
-    QVector3D defaultColor(1.0f, 1.0f, 1.0f);
+    QVector3D color;
+
+    if (mat.color != QVector3D(0.0f, 0.0f, 0.0f)){
+        color = mat.color;
+    }
+    else {
+        color = QVector3D (1.0f, 1.0f, 1.0f);
+    }
+
+
     QVector3D defaultNormal(0, 0, 0);
     QVector2D defaultUV(0, 0);
 
@@ -544,7 +566,7 @@ void Scene::loadObjFile(const QString &fileName,
 
                 Mesh::Vertex v;
                 v.pos = positions[vi];
-                v.color = defaultColor;
+                v.color = color;
                 v.normal = (ni >= 0 && ni < normals.size()) ? normals[ni] : defaultNormal;
                 v.uv = (ti >= 0 && ti < uvs.size()) ? uvs[ti] : defaultUV;
 

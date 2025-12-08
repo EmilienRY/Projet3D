@@ -37,6 +37,8 @@ private:
     QSlider *scaleSlider;
     QLabel *fpsLabel;
 
+    QPalette *palette;
+
 };
 
 #endif // MAINWINDOW_H

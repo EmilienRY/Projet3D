@@ -833,7 +833,8 @@ void OpenGLWindow::focusOutEvent(QFocusEvent *ev)
 
 void OpenGLWindow::loadOffFile(const QString &fileName,
                                QVector<Mesh::Vertex> &verts,
-                               QVector<unsigned int> &idx)
+                               QVector<unsigned int> &idx,
+                               Material mat)
 {
     QFile file(fileName);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -863,7 +864,14 @@ void OpenGLWindow::loadOffFile(const QString &fileName,
     verts.reserve(vertexCount);
     idx.reserve(faceCount * 3);
 
-    QVector3D defaultColor(1.0f, 1.0f, 1.0f);
+    QVector3D color;
+
+    if (mat.color != QVector3D(0.0f, 0.0f, 0.0f)){
+        color = mat.color;
+    }
+    else {
+        color = QVector3D (1.0f, 1.0f, 1.0f);
+    }
 
     std::vector<QVector3D> positions;
     positions.reserve(vertexCount);
@@ -875,7 +883,7 @@ void OpenGLWindow::loadOffFile(const QString &fileName,
     }
 
     for (auto &p : positions)
-        verts.append({p, defaultColor});
+        verts.append({p, color});
 
     for (int i = 0; i < faceCount; ++i) {
         int n, a, b, c;
@@ -975,6 +983,8 @@ void OpenGLWindow::setSelectedMesh(int index)
 void OpenGLWindow::resetScene(){
     m_sceneIndex -=1;
     changeScene();
+
+    resetAccumulation();
 }
 
 void OpenGLWindow::setAxeX(int value)
@@ -990,6 +1000,7 @@ void OpenGLWindow::setAxeX(int value)
     mesh->updateModelMatrix();
 
     update();
+    resetAccumulation();
 }
 
 void OpenGLWindow::setAxeY(int value)
@@ -1005,6 +1016,7 @@ void OpenGLWindow::setAxeY(int value)
     mesh->updateModelMatrix();
 
     update();
+    resetAccumulation();
 }
 
 void OpenGLWindow::setAxeZ(int value)
@@ -1020,6 +1032,7 @@ void OpenGLWindow::setAxeZ(int value)
     mesh->updateModelMatrix();
 
     update();
+    resetAccumulation();
 }
 
 void OpenGLWindow::setRotationX(int value)
@@ -1033,6 +1046,9 @@ void OpenGLWindow::setRotationX(int value)
     mesh->rotation.setX(value);
 
     mesh->updateModelMatrix();
+
+    update();
+    resetAccumulation();
 }
 
 void OpenGLWindow::setRotationY(int value)
@@ -1046,6 +1062,9 @@ void OpenGLWindow::setRotationY(int value)
     mesh->rotation.setY(value);
 
     mesh->updateModelMatrix();
+
+    update();
+    resetAccumulation();
 }
 
 void OpenGLWindow::setRotationZ(int value)
@@ -1059,6 +1078,9 @@ void OpenGLWindow::setRotationZ(int value)
     mesh->rotation.setZ(value);
 
     mesh->updateModelMatrix();
+
+    update();
+    resetAccumulation();
 }
 
 void OpenGLWindow::setScale(int value)
@@ -1077,6 +1099,9 @@ void OpenGLWindow::setScale(int value)
     }
 
     mesh->updateModelMatrix();
+
+    update();
+    resetAccumulation();
 }
 
 

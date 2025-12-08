@@ -22,7 +22,8 @@ public:
     void openOffMesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx);
     static void loadOffFile(const QString &fileName,
                      QVector<Mesh::Vertex> &verts,
-                     QVector<unsigned int> &idx);
+                     QVector<unsigned int> &idx,
+                     Material mat);
     void changeScene();
     void resetScene();
 

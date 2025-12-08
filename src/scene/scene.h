@@ -19,7 +19,7 @@ public:
     void buildCornellBox();
     void loadOffFile(QString &fileName, QVector<Mesh::Vertex> &verts, QVector<unsigned int> &idx, int &faceCount);
 
-    void loadObjFile(const QString &fileName,QVector<Mesh::Vertex> &verts,QVector<unsigned int> &idx,int &faceCount);
+    void loadObjFile(const QString &fileName,QVector<Mesh::Vertex> &verts,QVector<unsigned int> &idx,int &faceCount, Material mat);
 private:
     QVector<Mesh*> m_meshes;
     QVector<Light> m_lights;
