@@ -34,6 +34,9 @@ private:
     QSlider *rotationYslider;
     QSlider *rotationZslider;
 
+    QSlider *ksSlider;
+    QSlider *kdSlider;
+
     QSlider *scaleSlider;
     QLabel *fpsLabel;
 

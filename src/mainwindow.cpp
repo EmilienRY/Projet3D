@@ -124,6 +124,36 @@ mainWindow::mainWindow(QWidget *parent)
 
 
 
+
+    QPushButton *btnSpecularColor = new QPushButton("Changer Couleur reflets");
+    layout->addRow("Couleur reflet :", btnSpecularColor);
+
+    connect(btnSpecularColor, &QPushButton::clicked, this, [this]() {
+
+        QColorDialog *dialog = new QColorDialog(this);
+        dialog->setOption(QColorDialog::DontUseNativeDialog, true);
+        dialog->setWindowTitle("Choisir une couleur");
+
+        connect(dialog, &QColorDialog::colorSelected,
+                this, [this](const QColor &c) {
+                    m_glWindow->changeColorSpec(c);
+                });
+
+        dialog->open();
+    });
+
+
+    ksSlider = new QSlider(Qt::Horizontal);
+    kdSlider = new QSlider(Qt::Horizontal);
+
+    ksSlider->setRange(0, 100);
+    kdSlider->setRange(0, 100);
+
+    layout->addRow("ks :", ksSlider);
+    layout->addRow("kd :", kdSlider);
+
+
+
     QPushButton *resetBtn = new QPushButton("Reset Scene");
     layout->addRow(resetBtn);
 
@@ -138,6 +168,9 @@ mainWindow::mainWindow(QWidget *parent)
     connect(rotationXslider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRotationX);
     connect(rotationYslider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRotationY);
     connect(rotationZslider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRotationZ);
+
+    connect(ksSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setKs);
+    connect(kdSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setKd);
 
     connect(scaleSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setScale);
 

@@ -29,7 +29,6 @@ public:
 
     void openOBJmesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount);
 
-    // Transformation Matriciel avec les sliders
     void setAxeX(int value);
     void setAxeY(int value);
     void setAxeZ(int value);
@@ -37,12 +36,15 @@ public:
     void setRotationY(int value);
     void setRotationZ(int value);
     void setScale(int value);
-
+    void setKs(int value);
+    void setKd(int value);
     Scene* scene() { return m_scene; }
     void setSelectedMesh(int index);
     int m_selectedMesh = -1;
 
     void changeColor(QColor color);
+    void changeColorSpec(QColor color);
+
 
 protected:
     void initializeGL() override;

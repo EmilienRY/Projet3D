@@ -728,12 +728,8 @@ void OpenGLWindow::keyPressEvent(QKeyEvent *ev)
     if (ev->key() == Qt::Key_Escape && m_fpsActive) {
         m_fpsActive = false;
         setCursor(Qt::ArrowCursor);
-    #if QT_VERSION >= QT_VERSION_CHECK(6,10,0)
         setKeyboardGrabEnabled(false);
         setMouseGrabEnabled(false);
-    #else
-
-    #endif
         return;
     }
 
@@ -787,12 +783,8 @@ void OpenGLWindow::mousePressEvent(QMouseEvent *ev)
         m_fpsActive = true;
         m_lastMousePos = ev->position();
         setCursor(Qt::BlankCursor);
-    #if QT_VERSION >= QT_VERSION_CHECK(6,10,0)
         setKeyboardGrabEnabled(true);
         setMouseGrabEnabled(true);
-    #else
-
-    #endif
     }
 
 
@@ -820,12 +812,8 @@ void OpenGLWindow::focusOutEvent(QFocusEvent *ev)
     if (m_fpsActive) {
         m_fpsActive = false;
         setCursor(Qt::ArrowCursor);
-#if QT_VERSION >= QT_VERSION_CHECK(6,10,0)
-    setKeyboardGrabEnabled(false);
-    setMouseGrabEnabled(false);
-#else
-
-#endif
+        setKeyboardGrabEnabled(false);
+        setMouseGrabEnabled(false);
     }
 
     QOpenGLWindow::focusOutEvent(ev);
@@ -987,6 +975,39 @@ void OpenGLWindow::resetScene(){
     resetAccumulation();
 }
 
+
+
+void OpenGLWindow::setKs(int value)
+{
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+
+    mesh->m_material.ks= (float)value / 100.0f ;
+
+    update();
+    resetAccumulation();
+}
+
+
+void OpenGLWindow::setKd(int value)
+{
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+
+    mesh->m_material.kd=(float)value / 100.0f ;
+
+    update();
+    resetAccumulation();
+}
+
 void OpenGLWindow::setAxeX(int value)
 {
     if (!m_scene) return;
@@ -1123,7 +1144,28 @@ void OpenGLWindow::changeColor(QColor color){
                     mesh->m_Vertices.size() * sizeof(Mesh::Vertex),
                     mesh->m_Vertices.data());
 
+    resetAccumulation();
+    update();
+}
 
+
+
+void OpenGLWindow::changeColorSpec(QColor color){
+    if (!m_scene) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+
+    mesh->m_material.specularColor=QVector3D(color.redF(), color.greenF(), color.blueF());
+
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->m_vbo.bufferId());
+    glBufferSubData(GL_ARRAY_BUFFER, 0,
+                    mesh->m_Vertices.size() * sizeof(Mesh::Vertex),
+                    mesh->m_Vertices.data());
+
+    resetAccumulation();
     update();
 }
 
