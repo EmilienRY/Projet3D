@@ -32,6 +32,19 @@ mainWindow::mainWindow(QWidget *parent)
     menuFile->addAction(loadOBJ);
     connect(loadOBJ, &QAction::triggered, this, &mainWindow::openObjMesh);
 
+    QMenu *menuMesh = menuBar()->addMenu("Mesh");
+    QAction *addSphere = new QAction("Add Sphere", this);
+    QAction *addPlane = new QAction("Add Plane", this);
+    menuMesh->addAction(addSphere);
+    connect(addSphere, &QAction::triggered, this, &mainWindow::addSphereInScene);
+    menuMesh->addAction(addPlane);
+    connect(addPlane, &QAction::triggered, this, &mainWindow::addPlaneInScene);
+
+    QMenu *menuLight = menuBar()->addMenu("Light");
+    QAction *addLight = new QAction("Add Light", this);
+    menuLight->addAction(addLight);
+    connect(addLight, &QAction::triggered, this, &mainWindow::addLight);
+
     QDockWidget *dock = new QDockWidget("Scene Controls", this);
     dock->setAllowedAreas(Qt::RightDockWidgetArea);
     dock->setFixedWidth(350);
@@ -70,9 +83,9 @@ mainWindow::mainWindow(QWidget *parent)
     ySlider = new QSlider(Qt::Horizontal);
     zSlider = new QSlider(Qt::Horizontal);
 
-    xSlider->setRange(-50, 50);
-    ySlider->setRange(-50, 50);
-    zSlider->setRange(-50, 50);
+    xSlider->setRange(-100, 100);
+    ySlider->setRange(-100, 100);
+    zSlider->setRange(-100, 100);
 
     layout->addRow(QString("Translation X : %1").arg(xSlider->value()/10), xSlider);
     layout->addRow(QString("Translation Y : %1").arg(ySlider->value()/10), ySlider);
@@ -98,6 +111,9 @@ mainWindow::mainWindow(QWidget *parent)
 
     connect(m_glWindow, &OpenGLWindow::selectedMeshChanged,
             this, &mainWindow::onMeshSelected);
+
+    connect(m_glWindow, &OpenGLWindow::selectedLightChanged,
+            this, &mainWindow::onLighthSelected);
 
     fpsLabel = new QLabel("FPS: 0");
     layout->addRow("FPS :", fpsLabel);
@@ -183,14 +199,40 @@ mainWindow::mainWindow(QWidget *parent)
     yLightSlider = new QSlider(Qt::Horizontal);
     zLightSlider = new QSlider(Qt::Horizontal);
 
-    xLightSlider->setRange(-50, 50);
-    yLightSlider->setRange(-50, 50);
-    zLightSlider->setRange(-50, 50);
+    xLightSlider->setRange(-100, 100);
+    yLightSlider->setRange(-100, 100);
+    zLightSlider->setRange(-100, 100);
 
     layout->addRow(QString("Light Translation X : %1").arg(xLightSlider->value()/10), xLightSlider);
     layout->addRow(QString("Light Translation Y : %1").arg(yLightSlider->value()/10), yLightSlider);
     layout->addRow(QString("Light Translation Z : %1").arg(zLightSlider->value()/10), zLightSlider);
 
+    QPushButton *btnLightColor = new QPushButton("Changer Couleur Lumière");
+    layout->addRow("Couleur de la lumière :", btnLightColor);
+
+    connect(btnLightColor, &QPushButton::clicked, this, [this]() {
+
+        QColorDialog *dialog = new QColorDialog(this);
+        dialog->setOption(QColorDialog::DontUseNativeDialog, true);
+        dialog->setWindowTitle("Choisir une couleur");
+
+        connect(dialog, &QColorDialog::colorSelected,
+                this, [this](const QColor &c) {
+                    m_glWindow->changeColorLight(c);
+                });
+
+        dialog->open();
+    });
+
+
+    lightIntensitySlider = new QSlider(Qt::Horizontal);
+    lighRadiusSlider = new QSlider(Qt::Horizontal);
+
+    lightIntensitySlider->setRange(1, 100);
+    lighRadiusSlider->setRange(0, 100);
+
+    layout->addRow(QString("Intensitée : %1").arg(lightIntensitySlider->value()/10), lightIntensitySlider);
+    layout->addRow(QString("Rayon Lumière : %1").arg(lighRadiusSlider->value()/10), lighRadiusSlider);
 
     QPushButton *resetBtn = new QPushButton("Reset Scene");
     layout->addRow(resetBtn);
@@ -212,6 +254,13 @@ mainWindow::mainWindow(QWidget *parent)
 
     connect(scaleSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setScale);
     connect(shininessSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setShininess);
+
+
+    connect(xLightSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setLightX);
+    connect(yLightSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setLightY);
+    connect(zLightSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setLightZ);
+    connect(lightIntensitySlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setIntensity);
+    connect(lighRadiusSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRadius);
 
     connect(resetBtn, &QPushButton::clicked, this, &mainWindow::on_resetButton_clicked);
 }
@@ -278,8 +327,7 @@ void mainWindow::on_resetButton_clicked()
     if (!scene) return;
 
     const QVector<Mesh*>& meshes = scene->meshes();
-    
-    // Vérifier si la scène contient des meshes et si l'index est valide
+
     if (!meshes.isEmpty() && m_glWindow->m_selectedMesh >= 0 && m_glWindow->m_selectedMesh < meshes.size()) {
         xSlider->setValue(meshes[m_glWindow->m_selectedMesh]->position.x() * 10);
         ySlider->setValue(meshes[m_glWindow->m_selectedMesh]->position.y() * 10);
@@ -331,7 +379,7 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     shininessSlider->setValue(mat.shininess);
 }
 
-void mainWindow::onLighthSelected(int index, const QVector3D &pos, const QVector3D &color, const float &intensity, float mat)
+void mainWindow::onLighthSelected(int index, QVector3D pos, float intensity, float radius)
 {
     QSignalBlocker b1(xLightSlider);
     QSignalBlocker b2(yLightSlider);
@@ -341,11 +389,45 @@ void mainWindow::onLighthSelected(int index, const QVector3D &pos, const QVector
     yLightSlider->setValue(pos.y() * 10);
     zLightSlider->setValue(pos.z() * 10);
 
+    lightIntensitySlider->setValue(intensity * 10);
+    lighRadiusSlider->setValue(radius *10);
 }
 
 void mainWindow::updateFps(float fps)
 {
     fpsLabel->setText(QString::number(fps, 'f', 2));
+}
+
+void mainWindow::addSphereInScene()
+{
+    QVector<Mesh::Vertex> verts;
+    QVector<unsigned int> idx;
+    Material mat;
+
+    m_glWindow->scene()->generateSphereMesh(1.0f,20,20,verts,idx,mat);
+    m_glWindow->addSphere(verts,idx, mat);
+}
+
+void mainWindow::addPlaneInScene()
+{
+    QVector<Mesh::Vertex> verts;
+    QVector<unsigned int> idx;
+    Material mat;
+    mat.color = QVector3D(1.0f, 1.0f, 1.0f);
+    mat.specularColor = QVector3D(1.0f, 1.0f, 1.0f);
+
+    m_glWindow->scene()->GenerateQuad({-3,0.,-3},{-3,0.,3},{3,0.,3},{3,0.,-3},{1.0f, 1.0f, 1.0f},verts,idx);
+    m_glWindow->addPlane(verts,idx, mat);
+}
+
+void mainWindow::addLight(){
+    Light l;
+    l.position = QVector3D(2.0f, 4.0f, 2.0f);
+    l.color    = QVector3D(1.0f, 1.f, 1.f);
+    l.intensity= 25.2f;
+    l.lightRadius = 1.1f;
+    m_glWindow->scene()->addLight(l);
+    m_glWindow->updateLightList();
 }
 
 

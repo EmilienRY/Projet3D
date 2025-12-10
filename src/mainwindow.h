@@ -19,8 +19,11 @@ private slots:
     void openOffMesh();
     void openObjMesh();
     void onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale, Material mat);
-    void onLighthSelected(int index, const QVector3D &pos, const QVector3D &color, const float &inten, float radius);
+    void onLighthSelected(int index, QVector3D pos, float intensity, float radius);
     void updateFps(float fps);
+    void addSphereInScene();
+    void addPlaneInScene();
+    void addLight();
 
 
 private:
@@ -49,7 +52,9 @@ private:
 
     QLabel *fpsLabel;
 
-    QPalette *palette;
+    QSlider *lightIntensitySlider;
+    QSlider *lighRadiusSlider;
+
 
 signals :
 

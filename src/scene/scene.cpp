@@ -19,13 +19,17 @@ void Scene::addMesh(Mesh* m)
     if (m) m_meshes.append(m);
 }
 
+void Scene::addLight(Light l){
+    m_lights.append(l);
+}
+
 void Scene::clear()
 {
     m_meshes.clear();
     m_lights.clear();
 }
 
-void generateSphereMesh(float radius,
+void Scene::generateSphereMesh(float radius,
                         int stacks, int slices,
                         QVector<Mesh::Vertex>& verts,
                         QVector<unsigned int>& idx,
@@ -68,6 +72,17 @@ void generateSphereMesh(float radius,
             idx.append(d);
         }
     }
+}
+
+void Scene::GenerateQuad(QVector3D a, QVector3D b, QVector3D c, QVector3D d, QVector3D color, QVector<Mesh::Vertex>& verts, QVector<unsigned int>& idx) {
+    unsigned base = verts.size();
+    QVector3D n = QVector3D::crossProduct(b-a, c-a).normalized();
+    verts.append({a, n, color});
+    verts.append({b, n, color});
+    verts.append({c, n, color});
+    verts.append({d, n, color});
+    idx.append(base+0); idx.append(base+1); idx.append(base+2);
+    idx.append(base+2); idx.append(base+3); idx.append(base+0);
 }
 
 void Scene::buildPlaneSphere()

@@ -986,10 +986,9 @@ void OpenGLWindow::setSelectedLight(int index){
     
     if (index >= 0 && index < m_scene->lights().size()) {
         QVector3D pos = m_scene->lights()[index].position;
-        QVector3D color = m_scene->lights()[index].color;
         float intensity = m_scene->lights()[index].intensity;
         float radius = m_scene->lights()[index].lightRadius;
-        emit selectedLightChanged(index, pos, color, intensity, radius);
+        emit selectedLightChanged(index, pos, intensity, radius);
     }
 
     update();
@@ -1221,6 +1220,169 @@ void OpenGLWindow::changeColorSpec(QColor color){
     resetAccumulation();
     update();
     uploadSceneToGPU();
+}
+
+void OpenGLWindow::changeColorLight(QColor color){
+    if (!m_scene || m_scene->lights().isEmpty()) return;
+
+    QVector<Light>& lights = m_scene->lights();
+    if (m_selectedLight < 0 || m_selectedLight >= lights.size()) return;
+
+    lights[m_selectedLight].color = QVector3D(color.redF(), color.greenF(), color.blueF());
+
+    uploadSceneToGPU();
+    resetAccumulation();
+    update();
+}
+
+void OpenGLWindow::setLightX(int value)
+{
+    if (!m_scene || m_scene->lights().isEmpty()) return;
+
+    QVector<Light>& lights = m_scene->lights();
+    if (m_selectedLight < 0 || m_selectedLight >= lights.size()) return;
+
+    lights[m_selectedLight].position.setX(value / 10.0f);
+
+    uploadSceneToGPU();
+    resetAccumulation();
+    update();
+}
+
+void OpenGLWindow::setLightY(int value)
+{
+    if (!m_scene || m_scene->lights().isEmpty()) return;
+
+    QVector<Light>& lights = m_scene->lights();
+    if (m_selectedLight < 0 || m_selectedLight >= lights.size()) return;
+
+    lights[m_selectedLight].position.setY(value / 10.0f);
+
+    uploadSceneToGPU();
+    resetAccumulation();
+    update();
+}
+
+void OpenGLWindow::setLightZ(int value)
+{
+    if (!m_scene || m_scene->lights().isEmpty()) return;
+
+    QVector<Light>& lights = m_scene->lights();
+    if (m_selectedLight < 0 || m_selectedLight >= lights.size()) return;
+
+    lights[m_selectedLight].position.setZ(value / 10.0f);
+
+    uploadSceneToGPU();
+    resetAccumulation();
+    update();
+}
+
+void OpenGLWindow::setIntensity(int value)
+{
+    if (!m_scene || m_scene->lights().isEmpty()) return;
+
+    QVector<Light>& lights = m_scene->lights();
+    if (m_selectedLight < 0 || m_selectedLight >= lights.size()) return;
+
+    lights[m_selectedLight].intensity = (float)value / 10.0f;
+
+    uploadSceneToGPU();
+    resetAccumulation();
+    update();
+}
+
+void OpenGLWindow::setRadius(int value)
+{
+    if (!m_scene || m_scene->lights().isEmpty()) return;
+
+    QVector<Light>& lights = m_scene->lights();
+    if (m_selectedLight < 0 || m_selectedLight >= lights.size()) return;
+
+    lights[m_selectedLight].lightRadius = (float)value / 10.0f;
+
+    uploadSceneToGPU();
+    resetAccumulation();
+    update();
+}
+
+void OpenGLWindow::addSphere(QVector<Mesh::Vertex> verts, QVector<unsigned int> idx, Material mat){
+
+    makeCurrent();
+
+    Mesh* sphere = new Mesh();
+    sphere->initialize(verts, idx);
+    sphere->modelMatrix.setToIdentity();
+    sphere->addMaterial(mat);
+    sphere->isSphere=true;
+
+    QString meshName = "sphere";
+    int countName = 0;
+
+    for (int i = 0; i < m_scene->meshes().size(); ++i) {
+        if (meshName == m_scene->meshes()[i]->name){
+            countName++;
+        }
+    }
+
+    if (countName > 0){
+        meshName.insert(meshName.size(), QString::number(countName+1));
+    }
+    sphere->name = meshName;
+
+    m_scene->addMesh(sphere);
+
+    uploadSceneToGPU();
+    resetAccumulation();
+    doneCurrent();
+    update();
+    emit sceneReady();
+
+}
+
+void OpenGLWindow::addPlane(QVector<Mesh::Vertex> verts, QVector<unsigned int> idx, Material mat){
+
+    makeCurrent();
+    qDebug() << "début ajout" ;
+    Mesh* plane = new Mesh();
+    plane->initialize(verts, idx);
+    plane->modelMatrix.setToIdentity();
+    plane->addMaterial(mat);
+    plane->isSquare=true;
+
+    QString meshName = "plane";
+    int countName = 0;
+    qDebug() << "nom" ;
+
+    for (int i = 0; i < m_scene->meshes().size(); ++i) {
+        if (meshName == m_scene->meshes()[i]->name){
+            countName++;
+        }
+    }
+
+    if (countName > 0){
+        meshName.insert(meshName.size(), QString::number(countName+1));
+    }
+    plane->name = meshName;
+
+    qDebug() << "nom initialisé" ;
+
+
+    m_scene->addMesh(plane);
+
+    uploadSceneToGPU();
+    resetAccumulation();
+    doneCurrent();
+    update();
+    emit sceneReady();
+
+}
+
+void OpenGLWindow::updateLightList(){
+    uploadSceneToGPU();
+    resetAccumulation();
+    doneCurrent();
+    update();
+    emit sceneReady();
 }
 
 

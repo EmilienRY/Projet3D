@@ -40,6 +40,11 @@ public:
     void setKs(int value);
     void setKd(int value);
     void setShininess(int value);
+    void setLightX(int value);
+    void setLightY(int value);
+    void setLightZ(int value);
+    void setIntensity(int value);
+    void setRadius(int value);
 
     Scene* scene() { return m_scene; }
     void setSelectedMesh(int index);
@@ -49,7 +54,11 @@ public:
 
     void changeColor(QColor color);
     void changeColorSpec(QColor color);
+    void changeColorLight(QColor color);
 
+    void addSphere(QVector<Mesh::Vertex> verts, QVector<unsigned int> idx, Material mat);
+    void addPlane(QVector<Mesh::Vertex> verts, QVector<unsigned int> idx, Material mat);
+    void updateLightList();
 
 protected:
     void initializeGL() override;
@@ -62,6 +71,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *ev) override;
     void focusOutEvent(QFocusEvent *ev) override;
     void resetAccumulation();
+
 private:
     typedef GLuint64 (APIENTRY *PFNGLGETTEXTUREHANDLEARBPROC) (GLuint texture);
     typedef void (APIENTRY *PFNGLMAKETEXTUREHANDLERESIDENTARBPROC) (GLuint64 handle);
@@ -141,7 +151,7 @@ private:
         void fpsChanged(float fps);
         void sceneReady();
         void selectedMeshChanged(int index, QVector3D position, QVector3D rota, float scale, Material mat);
-        void selectedLightChanged(int index, QVector3D position, QVector3D color, float intensity, float radius);
+        void selectedLightChanged(int index, QVector3D position, float intensity, float radius);
 
 
 
