@@ -653,14 +653,6 @@ void OpenGLWindow::paintGL()
 
     if(m_useRaytracing)
     {
-        if ((m_camera.position() - m_lastCamPos).length() > 1e-4f ||
-            (m_camera.front() - m_lastCamFront).length() > 1e-4f ||
-            (m_camera.up() - m_lastCamUp).length() > 1e-4f)
-        {
-            uploadSceneToGPU();
-
-        }
-
         if(!m_offLineMode)
         {
             doRayTrace();
@@ -875,8 +867,14 @@ void OpenGLWindow::loadOffFile(const QString &fileName,
         positions.emplace_back(x, y, z);
     }
 
-    for (auto &p : positions)
-        verts.append({p, color});
+    for (auto &p : positions) {
+        Mesh::Vertex v;
+        v.pos = p;
+        v.normal = QVector3D(0, 0, 0);
+        v.color = color;
+        v.uv = QVector2D(0, 0);
+        verts.append(v);
+    }
 
     for (int i = 0; i < faceCount; ++i) {
         int n, a, b, c;
@@ -892,7 +890,7 @@ void OpenGLWindow::loadOffFile(const QString &fileName,
     }
 }
 
-void OpenGLWindow::openOffMesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx)
+void OpenGLWindow::openOffMesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, Material mat)
 {
     makeCurrent();
     QString meshName = filename;
@@ -902,6 +900,7 @@ void OpenGLWindow::openOffMesh(const QString filename, const QVector<Mesh::Verte
     Mesh* mesh = new Mesh();
     mesh->initialize(verts, idx);
     mesh->modelMatrix.setToIdentity();
+    mesh->addMaterial(mat);
 
     int countName = 0;
 
@@ -925,7 +924,7 @@ void OpenGLWindow::openOffMesh(const QString filename, const QVector<Mesh::Verte
     emit sceneReady();
 }
 
-void OpenGLWindow::openOBJmesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount)
+void OpenGLWindow::openOBJmesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount, Material mat)
 {
     makeCurrent();
     QString meshName = filename;
@@ -936,6 +935,7 @@ void OpenGLWindow::openOBJmesh(const QString filename, const QVector<Mesh::Verte
     mesh->initialize(verts, idx);
     mesh->nbTriangles=faceCount;
     mesh->modelMatrix.setToIdentity();
+    mesh->addMaterial(mat);
 
     int countName = 0;
 

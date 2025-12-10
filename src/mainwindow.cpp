@@ -14,16 +14,17 @@
 #include <QComboBox>
 #include <QFileDialog>
 #include <QColorDialog>
+#include <QGroupBox>
+#include <QVBoxLayout>
+#include <QScrollArea>
 
 mainWindow::mainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    // --- OpenGL Window ---
     m_glWindow = new OpenGLWindow();
     QWidget *glWidget = QWidget::createWindowContainer(m_glWindow, this);
     setCentralWidget(glWidget);
 
-    // --- Menu ---
     QMenu *menuFile = menuBar()->addMenu("File");
     QAction *loadOFF = new QAction("Load Mesh 3D (.off)", this);
     QAction *loadOBJ = new QAction("Load Mesh 3D (.obj)", this);
@@ -49,11 +50,18 @@ mainWindow::mainWindow(QWidget *parent)
     dock->setAllowedAreas(Qt::RightDockWidgetArea);
     dock->setFixedWidth(350);
 
+    QScrollArea *scrollArea = new QScrollArea();
+    scrollArea->setWidgetResizable(true);
+
     QWidget *dockContent = new QWidget();
-    QFormLayout *layout = new QFormLayout();
+    QVBoxLayout *mainLayout = new QVBoxLayout(dockContent);
+
+    QGroupBox *meshGroup = new QGroupBox("Objets / Meshes");
+    meshGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }");
+    QFormLayout *meshLayout = new QFormLayout();
 
     meshSelector = new QComboBox();
-    layout->addRow("Mesh sélectionné :", meshSelector);
+    meshLayout->addRow("Sélection :", meshSelector);
 
 
     connect(m_glWindow, &OpenGLWindow::sceneReady, this, [this]() {
@@ -79,7 +87,6 @@ mainWindow::mainWindow(QWidget *parent)
     connect(meshSelector, &QComboBox::currentIndexChanged,
             m_glWindow, &OpenGLWindow::setSelectedMesh);
 
-    // --- Sliders Translation ---
     xSlider = new QSlider(Qt::Horizontal);
     ySlider = new QSlider(Qt::Horizontal);
     zSlider = new QSlider(Qt::Horizontal);
@@ -88,11 +95,24 @@ mainWindow::mainWindow(QWidget *parent)
     ySlider->setRange(-100, 100);
     zSlider->setRange(-100, 100);
 
-    layout->addRow(QString("Translation X : %1").arg(xSlider->value()/10), xSlider);
-    layout->addRow(QString("Translation Y : %1").arg(ySlider->value()/10), ySlider);
-    layout->addRow(QString("Translation Z : %1").arg(zSlider->value()/10), zSlider);
+    xLabel = new QLabel(QString("Translation X : %1").arg(xSlider->value()/10.0));
+    meshLayout->addRow(xLabel, xSlider);
+    connect(xSlider, &QSlider::valueChanged, this, [this](int value){
+        xLabel->setText(QString("Translation X : %1").arg(value/10.0));
+    });
 
-    // --- Sliders Rotation ---
+    yLabel = new QLabel(QString("Translation Y : %1").arg(ySlider->value()/10.0));
+    meshLayout->addRow(yLabel, ySlider);
+    connect(ySlider, &QSlider::valueChanged, this, [this](int value){
+        yLabel->setText(QString("Translation Y : %1").arg(value/10.0));
+    });
+
+    zLabel = new QLabel(QString("Translation Z : %1").arg(zSlider->value()/10.0));
+    meshLayout->addRow(zLabel, zSlider);
+    connect(zSlider, &QSlider::valueChanged, this, [this](int value){
+        zLabel->setText(QString("Translation Z : %1").arg(value/10.0));
+    });
+
     rotationXslider = new QSlider(Qt::Horizontal);
     rotationYslider = new QSlider(Qt::Horizontal);
     rotationZslider = new QSlider(Qt::Horizontal);
@@ -101,14 +121,34 @@ mainWindow::mainWindow(QWidget *parent)
     rotationYslider->setRange(0, 360);
     rotationZslider->setRange(0, 360);
 
-    layout->addRow(QString("Rotation X : %1").arg(rotationXslider->value()), rotationXslider);
-    layout->addRow(QString("Rotation Y : %1").arg(rotationYslider->value()), rotationYslider);
-    layout->addRow(QString("Rotation Z : %1").arg(rotationZslider->value()), rotationZslider);
+    rotXLabel = new QLabel(QString("Rotation X : %1").arg(rotationXslider->value()));
+    meshLayout->addRow(rotXLabel, rotationXslider);
+    connect(rotationXslider, &QSlider::valueChanged, this, [this](int value){
+        rotXLabel->setText(QString("Rotation X : %1").arg(value));
+    });
 
-    // --- Scale ---
+    rotYLabel = new QLabel(QString("Rotation Y : %1").arg(rotationYslider->value()));
+    meshLayout->addRow(rotYLabel, rotationYslider);
+    connect(rotationYslider, &QSlider::valueChanged, this, [this](int value){
+        rotYLabel->setText(QString("Rotation Y : %1").arg(value));
+    });
+
+    rotZLabel = new QLabel(QString("Rotation Z : %1").arg(rotationZslider->value()));
+    meshLayout->addRow(rotZLabel, rotationZslider);
+    connect(rotationZslider, &QSlider::valueChanged, this, [this](int value){
+        rotZLabel->setText(QString("Rotation Z : %1").arg(value));
+    });
+
     scaleSlider = new QSlider(Qt::Horizontal);
     scaleSlider->setRange(1, 50);
-    layout->addRow(QString("Scale : %1").arg(scaleSlider->value()/10), scaleSlider);
+    scaleLabel = new QLabel(QString("Scale : %1").arg(scaleSlider->value()/10.0));
+    meshLayout->addRow(scaleLabel, scaleSlider);
+    connect(scaleSlider, &QSlider::valueChanged, this, [this](int value){
+        scaleLabel->setText(QString("Scale : %1").arg(value/10.0));
+    });
+
+    meshGroup->setLayout(meshLayout);
+    mainLayout->addWidget(meshGroup);
 
     connect(m_glWindow, &OpenGLWindow::selectedMeshChanged,
             this, &mainWindow::onMeshSelected);
@@ -116,14 +156,13 @@ mainWindow::mainWindow(QWidget *parent)
     connect(m_glWindow, &OpenGLWindow::selectedLightChanged,
             this, &mainWindow::onLighthSelected);
 
-    fpsLabel = new QLabel("FPS: 0");
-    layout->addRow("FPS :", fpsLabel);
-    connect(m_glWindow, &OpenGLWindow::fpsChanged, this, &mainWindow::updateFps);
+    QGroupBox *matGroup = new QGroupBox("Matériaux");
+    matGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }");
+    QFormLayout *matLayout = new QFormLayout();
 
-    // --- Material ---
 
     QPushButton *btnColor = new QPushButton("Changer Couleur");
-    layout->addRow("Couleur :", btnColor);
+    matLayout->addRow("Couleur :", btnColor);
 
     connect(btnColor, &QPushButton::clicked, this, [this]() {
 
@@ -143,7 +182,7 @@ mainWindow::mainWindow(QWidget *parent)
 
 
     QPushButton *btnSpecularColor = new QPushButton("Changer Couleur reflets");
-    layout->addRow("Couleur reflet :", btnSpecularColor);
+    matLayout->addRow("Couleur reflet :", btnSpecularColor);
 
     connect(btnSpecularColor, &QPushButton::clicked, this, [this]() {
 
@@ -166,15 +205,28 @@ mainWindow::mainWindow(QWidget *parent)
     ksSlider->setRange(0, 100);
     kdSlider->setRange(0, 100);
 
-    layout->addRow(QString("ks : %1").arg(ksSlider->value()/100), ksSlider);
-    layout->addRow(QString("kd : %1").arg(kdSlider->value()/100), kdSlider);
+    ksLabel = new QLabel(QString("ks : %1").arg(ksSlider->value()/100.0));
+    matLayout->addRow(ksLabel, ksSlider);
+    connect(ksSlider, &QSlider::valueChanged, this, [this](int value){
+        ksLabel->setText(QString("ks : %1").arg(value/100.0));
+    });
+
+    kdLabel = new QLabel(QString("kd : %1").arg(kdSlider->value()/100.0));
+    matLayout->addRow(kdLabel, kdSlider);
+    connect(kdSlider, &QSlider::valueChanged, this, [this](int value){
+        kdLabel->setText(QString("kd : %1").arg(value/100.0));
+    });
 
     shininessSlider = new QSlider(Qt::Horizontal);
     shininessSlider->setRange(1, 200);
-    layout->addRow(QString("Shininess : %1").arg(shininessSlider->value()), shininessSlider);
+    shininessLabel = new QLabel(QString("Shininess : %1").arg(shininessSlider->value()));
+    matLayout->addRow(shininessLabel, shininessSlider);
+    connect(shininessSlider, &QSlider::valueChanged, this, [this](int value){
+        shininessLabel->setText(QString("Shininess : %1").arg(value));
+    });
 
     typeMat = new QComboBox(this);
-    layout->addRow("Type de matériel :", typeMat);
+    matLayout->addRow("Type de matériel :", typeMat);
 
     typeMat->addItem("Mate");
     typeMat->addItem("Mirroir");
@@ -183,10 +235,15 @@ mainWindow::mainWindow(QWidget *parent)
     connect(typeMat, &QComboBox::currentIndexChanged,
             m_glWindow, &OpenGLWindow::setSelectedTypeMat);
 
-    // Light
+    matGroup->setLayout(matLayout);
+    mainLayout->addWidget(matGroup);
+
+    QGroupBox *lightGroup = new QGroupBox("Lumières");
+    lightGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }");
+    QFormLayout *lightLayout = new QFormLayout();
 
     lightSelector = new QComboBox();
-    layout->addRow("Light sélectionné :", lightSelector);
+    lightLayout->addRow("Light sélectionné :", lightSelector);
 
 
     connect(m_glWindow, &OpenGLWindow::sceneReady, this, [this]() {
@@ -219,12 +276,26 @@ mainWindow::mainWindow(QWidget *parent)
     yLightSlider->setRange(-100, 100);
     zLightSlider->setRange(-100, 100);
 
-    layout->addRow(QString("Light Translation X : %1").arg(xLightSlider->value()/10), xLightSlider);
-    layout->addRow(QString("Light Translation Y : %1").arg(yLightSlider->value()/10), yLightSlider);
-    layout->addRow(QString("Light Translation Z : %1").arg(zLightSlider->value()/10), zLightSlider);
+    lightXLabel = new QLabel(QString("Light Translation X : %1").arg(xLightSlider->value()/10.0));
+    lightLayout->addRow(lightXLabel, xLightSlider);
+    connect(xLightSlider, &QSlider::valueChanged, this, [this](int value){
+        lightXLabel->setText(QString("Light Translation X : %1").arg(value/10.0));
+    });
+
+    lightYLabel = new QLabel(QString("Light Translation Y : %1").arg(yLightSlider->value()/10.0));
+    lightLayout->addRow(lightYLabel, yLightSlider);
+    connect(yLightSlider, &QSlider::valueChanged, this, [this](int value){
+        lightYLabel->setText(QString("Light Translation Y : %1").arg(value/10.0));
+    });
+
+    lightZLabel = new QLabel(QString("Light Translation Z : %1").arg(zLightSlider->value()/10.0));
+    lightLayout->addRow(lightZLabel, zLightSlider);
+    connect(zLightSlider, &QSlider::valueChanged, this, [this](int value){
+        lightZLabel->setText(QString("Light Translation Z : %1").arg(value/10.0));
+    });
 
     QPushButton *btnLightColor = new QPushButton("Changer Couleur Lumière");
-    layout->addRow("Couleur de la lumière :", btnLightColor);
+    lightLayout->addRow("Couleur de la lumière :", btnLightColor);
 
     connect(btnLightColor, &QPushButton::clicked, this, [this]() {
 
@@ -247,14 +318,39 @@ mainWindow::mainWindow(QWidget *parent)
     lightIntensitySlider->setRange(1, 100);
     lighRadiusSlider->setRange(0, 100);
 
-    layout->addRow(QString("Intensitée : %1").arg(lightIntensitySlider->value()/10), lightIntensitySlider);
-    layout->addRow(QString("Rayon Lumière : %1").arg(lighRadiusSlider->value()/10), lighRadiusSlider);
+    intensityLabel = new QLabel(QString("Intensitée : %1").arg(lightIntensitySlider->value()/10.0));
+    lightLayout->addRow(intensityLabel, lightIntensitySlider);
+    connect(lightIntensitySlider, &QSlider::valueChanged, this, [this](int value){
+        intensityLabel->setText(QString("Intensitée : %1").arg(value/10.0));
+    });
+
+    radiusLabel = new QLabel(QString("Rayon Lumière : %1").arg(lighRadiusSlider->value()/10.0));
+    lightLayout->addRow(radiusLabel, lighRadiusSlider);
+    connect(lighRadiusSlider, &QSlider::valueChanged, this, [this](int value){
+        radiusLabel->setText(QString("Rayon Lumière : %1").arg(value/10.0));
+    });
+
+    lightGroup->setLayout(lightLayout);
+    mainLayout->addWidget(lightGroup);
+
+    QGroupBox *globalGroup = new QGroupBox("Global");
+    globalGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }");
+    QFormLayout *globalLayout = new QFormLayout();
+
+    fpsLabel = new QLabel("FPS: 0");
+    globalLayout->addRow("FPS :", fpsLabel);
+    connect(m_glWindow, &OpenGLWindow::fpsChanged, this, &mainWindow::updateFps);
 
     QPushButton *resetBtn = new QPushButton("Reset Scene");
-    layout->addRow(resetBtn);
+    globalLayout->addRow(resetBtn);
 
-    dockContent->setLayout(layout);
-    dock->setWidget(dockContent);
+    globalGroup->setLayout(globalLayout);
+    mainLayout->addWidget(globalGroup);
+
+    mainLayout->addStretch();
+
+    scrollArea->setWidget(dockContent);
+    dock->setWidget(scrollArea);
     addDockWidget(Qt::RightDockWidgetArea, dock);
 
     connect(xSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setAxeX);
@@ -295,13 +391,20 @@ void mainWindow::openOffMesh()
 
     QtConcurrent::run([this, fileName]() {
         Material mat;
+        mat.color = QVector3D(0.8f, 0.8f, 0.8f);
+        mat.specularColor = QVector3D(0.0f, 0.0f, 0.0f);
+        mat.kd = 1.0f;
+        mat.ks = 0.0f;
+        mat.shininess = 1.0f;
+        mat.type = 0;
+
         QVector<Mesh::Vertex> verts;
         QVector<unsigned int> idx;
 
         m_glWindow->loadOffFile(fileName, verts, idx, mat);
 
         QMetaObject::invokeMethod(this, [=]() {
-            m_glWindow->openOffMesh(fileName, verts, idx);
+            m_glWindow->openOffMesh(fileName, verts, idx, mat);
             statusBar()->showMessage("Mesh loaded");
         });
     });
@@ -325,11 +428,17 @@ void mainWindow::openObjMesh()
         QVector<unsigned int> idx;
         int faceCount;
         Material mat;
+        mat.color = QVector3D(0.8f, 0.8f, 0.8f);
+        mat.specularColor = QVector3D(0.0f, 0.0f, 0.0f);
+        mat.kd = 1.0f;
+        mat.ks = 0.0f;
+        mat.shininess = 1.0f;
+        mat.type = 0;
 
         m_glWindow->scene()->loadObjFile(fileName, verts, idx, faceCount,mat);
 
         QMetaObject::invokeMethod(m_glWindow, [=]() {
-            m_glWindow->openOBJmesh(fileName, verts, idx, faceCount);
+            m_glWindow->openOBJmesh(fileName, verts, idx, faceCount, mat);
             statusBar()->showMessage("Mesh loaded");
         });
     });
@@ -399,21 +508,41 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     QSignalBlocker b2(ySlider);
     QSignalBlocker b3(zSlider);
     QSignalBlocker b4(typeMat);
+    QSignalBlocker b5(rotationXslider);
+    QSignalBlocker b6(rotationYslider);
+    QSignalBlocker b7(rotationZslider);
+    QSignalBlocker b8(scaleSlider);
+    QSignalBlocker b9(kdSlider);
+    QSignalBlocker b10(ksSlider);
+    QSignalBlocker b11(shininessSlider);
 
     xSlider->setValue(pos.x() * 10);
     ySlider->setValue(pos.y() * 10);
     zSlider->setValue(pos.z() * 10);
 
+    xLabel->setText(QString("Translation X : %1").arg(pos.x()));
+    yLabel->setText(QString("Translation Y : %1").arg(pos.y()));
+    zLabel->setText(QString("Translation Z : %1").arg(pos.z()));
+
     rotationXslider->setValue(rota.x());
     rotationYslider->setValue(rota.y());
     rotationZslider->setValue(rota.z());
 
+    rotXLabel->setText(QString("Rotation X : %1").arg(rota.x()));
+    rotYLabel->setText(QString("Rotation Y : %1").arg(rota.y()));
+    rotZLabel->setText(QString("Rotation Z : %1").arg(rota.z()));
+
     scaleSlider->setValue(scale * 10.0);
+    scaleLabel->setText(QString("Scale : %1").arg(scale));
 
     kdSlider->setValue(mat.kd *100);
     ksSlider->setValue(mat.ks *100);
 
+    kdLabel->setText(QString("kd : %1").arg(mat.kd));
+    ksLabel->setText(QString("ks : %1").arg(mat.ks));
+
     shininessSlider->setValue(mat.shininess);
+    shininessLabel->setText(QString("Shininess : %1").arg(mat.shininess));
     
     // Mettre à jour le type de matériau
     typeMat->setCurrentIndex(mat.type);
@@ -424,13 +553,22 @@ void mainWindow::onLighthSelected(int index, QVector3D pos, float intensity, flo
     QSignalBlocker b1(xLightSlider);
     QSignalBlocker b2(yLightSlider);
     QSignalBlocker b3(zLightSlider);
+    QSignalBlocker b4(lightIntensitySlider);
+    QSignalBlocker b5(lighRadiusSlider);
 
     xLightSlider->setValue(pos.x() * 10);
     yLightSlider->setValue(pos.y() * 10);
     zLightSlider->setValue(pos.z() * 10);
 
+    lightXLabel->setText(QString("Light Translation X : %1").arg(pos.x()));
+    lightYLabel->setText(QString("Light Translation Y : %1").arg(pos.y()));
+    lightZLabel->setText(QString("Light Translation Z : %1").arg(pos.z()));
+
     lightIntensitySlider->setValue(intensity * 10);
     lighRadiusSlider->setValue(radius *10);
+
+    intensityLabel->setText(QString("Intensitée : %1").arg(intensity));
+    radiusLabel->setText(QString("Rayon Lumière : %1").arg(radius));
 }
 
 void mainWindow::updateFps(float fps)
@@ -443,6 +581,12 @@ void mainWindow::addSphereInScene()
     QVector<Mesh::Vertex> verts;
     QVector<unsigned int> idx;
     Material mat;
+    mat.color = QVector3D(0.8f, 0.8f, 0.8f);
+    mat.specularColor = QVector3D(0.0f, 0.0f, 0.0f);
+    mat.kd = 1.0f;
+    mat.ks = 0.0f;
+    mat.shininess = 1.0f;
+    mat.type = 0;
 
     m_glWindow->scene()->generateSphereMesh(1.0f,20,20,verts,idx,mat);
     m_glWindow->addSphere(verts,idx, mat);
@@ -453,8 +597,12 @@ void mainWindow::addPlaneInScene()
     QVector<Mesh::Vertex> verts;
     QVector<unsigned int> idx;
     Material mat;
-    mat.color = QVector3D(1.0f, 1.0f, 1.0f);
-    mat.specularColor = QVector3D(1.0f, 1.0f, 1.0f);
+    mat.color = QVector3D(0.8f, 0.8f, 0.8f);
+    mat.specularColor = QVector3D(0.0f, 0.0f, 0.0f);
+    mat.kd = 1.0f;
+    mat.ks = 0.0f;
+    mat.shininess = 1.0f;
+    mat.type = 0;
 
     m_glWindow->scene()->GenerateQuad({-3,0.,-3},{-3,0.,3},{3,0.,3},{3,0.,-3},{1.0f, 1.0f, 1.0f},verts,idx);
     m_glWindow->addPlane(verts,idx, mat);

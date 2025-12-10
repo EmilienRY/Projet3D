@@ -56,10 +56,21 @@ private:
     QSlider *lightIntensitySlider;
     QSlider *lighRadiusSlider;
 
-
-signals :
-
-
+    QLabel *xLabel;
+    QLabel *yLabel;
+    QLabel *zLabel;
+    QLabel *rotXLabel;
+    QLabel *rotYLabel;
+    QLabel *rotZLabel;
+    QLabel *scaleLabel;
+    QLabel *ksLabel;
+    QLabel *kdLabel;
+    QLabel *shininessLabel;
+    QLabel *lightXLabel;
+    QLabel *lightYLabel;
+    QLabel *lightZLabel;
+    QLabel *intensityLabel;
+    QLabel *radiusLabel;
 };
 
-#endif // MAINWINDOW_H
+#endif
