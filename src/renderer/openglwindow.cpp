@@ -23,6 +23,10 @@ OpenGLWindow::~OpenGLWindow()
 {
     makeCurrent();
     delete m_program;
+    delete m_computeProgram;
+    delete m_denoiseProgram;
+    delete m_accumulationProgram;
+    delete m_screenProgram;
     delete m_scene;
     doneCurrent();
 }
@@ -491,43 +495,62 @@ void OpenGLWindow::doRayTrace()
 
     // DENOISE + ACCUMULATION
 
-    m_denoiseProgram->bind();
-    m_denoiseProgram->setUniformValue("u_frameIndex", m_accumFrame);
-
-    int passes = 3;
-
-    for (int i = 0; i < passes; i++)
+    if (m_denoiseMode == 0)
     {
-        int step = 1 << i;
-        m_denoiseProgram->setUniformValue("u_stepSize", step);
-        m_denoiseProgram->setUniformValue("u_passIndex", i);
+        m_denoiseProgram->bind();
+        m_denoiseProgram->setUniformValue("u_frameIndex", m_accumFrame);
+
+        int passes = m_denoisePasses;
+
+        for (int i = 0; i < passes; i++)
+        {
+            int step = 1 << i;
+            m_denoiseProgram->setUniformValue("u_stepSize", step);
+            m_denoiseProgram->setUniformValue("u_passIndex", i);
+            m_denoiseProgram->setUniformValue("u_phiColor", m_denoiseStrength);
+
+            glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+
+            glBindImageTexture(2, m_accumTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+
+            glBindImageTexture(3, m_gBufferTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+
+            if (i == 0)
+            {
+                glBindImageTexture(1, m_denoisedTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+            }
+            else if (i == 1)
+            {
+                glBindImageTexture(5, m_denoisedTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+                glBindImageTexture(1, m_currentTex,  0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+            }
+            else if (i == 2)
+            {
+                glBindImageTexture(5, m_currentTex,  0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+                glBindImageTexture(1, m_denoisedTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+            }
+
+            glDispatchCompute(gx, gy, 1);
+            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        }
+
+        m_denoiseProgram->release();
+    }
+    else
+    {
+        // ACCUMULATION ONLY
+        m_accumulationProgram->bind();
+        m_accumulationProgram->setUniformValue("u_frameIndex", m_accumFrame);
 
         glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-
+        glBindImageTexture(1, m_denoisedTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
         glBindImageTexture(2, m_accumTex, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-
-        glBindImageTexture(3, m_gBufferTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-
-        if (i == 0)
-        {
-            glBindImageTexture(1, m_denoisedTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-        }
-        else if (i == 1)
-        {
-            glBindImageTexture(5, m_denoisedTex, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-            glBindImageTexture(1, m_currentTex,  0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-        }
-        else if (i == 2)
-        {
-            glBindImageTexture(5, m_currentTex,  0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-            glBindImageTexture(1, m_denoisedTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-        }
 
         glDispatchCompute(gx, gy, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-    }
 
-    m_denoiseProgram->release();
+        m_accumulationProgram->release();
+    }
 
     // AFFICHAGE
 
@@ -690,6 +713,19 @@ void OpenGLWindow::loadShaders()
     if (!m_denoiseProgram->link())
     {
         qWarning() << "Denoise shader link error:" << m_denoiseProgram->log();
+    }
+
+    // ACCUMULATION SHADER
+
+    m_accumulationProgram = new QOpenGLShaderProgram();
+    if (!m_accumulationProgram->addShaderFromSourceFile(
+            QOpenGLShader::Compute, "src/shaders/accumulation.comp"))
+    {
+        qWarning() << "Accumulation shader compile error:" << m_accumulationProgram->log();
+    }
+    if (!m_accumulationProgram->link())
+    {
+        qWarning() << "Accumulation shader link error:" << m_accumulationProgram->log();
     }
 
 
@@ -1457,6 +1493,35 @@ void OpenGLWindow::setSpp(int value)
     if (m_spp != value) {
         m_spp = value;
         resetAccumulation();
+        update();
+    }
+}
+
+void OpenGLWindow::setDenoiseMode(int mode)
+{
+    if (m_denoiseMode != mode) {
+        m_denoiseMode = mode;
+        resetAccumulation();
+        update();
+    }
+}
+
+void OpenGLWindow::setDenoiseStrength(int value)
+{
+    float strength = value / 10.0f;
+    if (std::abs(m_denoiseStrength - strength) > 1e-4f) {
+        m_denoiseStrength = strength;
+        // Changing denoise strength doesn't necessarily require resetting accumulation if we consider it a post-process,
+        // but since it affects how we blend/filter, it might be cleaner to reset or just update.
+        // If we don't reset, the user sees the effect immediately on the current frame.
+        update();
+    }
+}
+
+void OpenGLWindow::setDenoisePasses(int value)
+{
+    if (m_denoisePasses != value) {
+        m_denoisePasses = value;
         update();
     }
 }

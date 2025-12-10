@@ -234,9 +234,9 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
         texIdx = sq.textureIdx;
 
         float areaABC = length(cross(B-A, C-A));
-        float u = length(c2) / areaABC; // Weight for A
-        float v = length(c3) / areaABC; // Weight for B
-        float w = length(c1) / areaABC; // Weight for C
+        float u = length(c2) / areaABC;
+        float v = length(c3) / areaABC;
+        float w = length(c1) / areaABC;
         uvOut = u*vec2(0,0) + v*vec2(1,0) + w*vec2(1,1);
 
         return true;
@@ -258,9 +258,9 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
         texIdx = sq.textureIdx;
 
         float areaACD = length(cross(C-A, D-A));
-        float u = length(c5) / areaACD; // Weight for A
-        float v = length(c6) / areaACD; // Weight for C
-        float w = length(c4) / areaACD; // Weight for D
+        float u = length(c5) / areaACD;
+        float v = length(c6) / areaACD;
+        float w = length(c4) / areaACD;
         uvOut = u*vec2(0,0) + v*vec2(1,1) + w*vec2(0,1);
 
         return true;
@@ -302,13 +302,11 @@ bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
 
     tHit = t;
 
-    // Interpolation des normales (Smooth Shading)
     vec3 n0 = vertices[tri.v0].normal.xyz;
     vec3 n1 = vertices[tri.v1].normal.xyz;
     vec3 n2 = vertices[tri.v2].normal.xyz;
     normalOut = normalize((1.0 - u - v) * n0 + u * n1 + v * n2);
 
-    // Interpolation UV
     vec2 uv0 = vertices[tri.v0].uv.xy;
     vec2 uv1 = vertices[tri.v1].uv.xy;
     vec2 uv2 = vertices[tri.v2].uv.xy;
@@ -353,7 +351,10 @@ bool traceShadow(vec3 ro, vec3 rd, float maxDist)
     {
         float t;
         if (intersectSphere(ro, rd, spheres[i].centerRadius, t)) {
-            if (t < maxDist) return true;
+            if (t < maxDist) {
+                if (spheres[i].Material_type == 2) continue;
+                return true;
+            }
         }
     }
 
@@ -369,13 +370,19 @@ bool traceShadow(vec3 ro, vec3 rd, float maxDist)
             if (t > 1e-4 && t < maxDist) {
                 vec3 P = ro + rd * t;
                 vec3 C = squares[i].c.xyz;
+                
+                bool hit = false;
                 if (dot(cross(B - A, P - A), N) >= 0.0 &&
                     dot(cross(C - B, P - B), N) >= 0.0 &&
-                    dot(cross(A - C, P - C), N) >= 0.0) return true;
+                    dot(cross(A - C, P - C), N) >= 0.0) hit = true;
+                else if (dot(cross(C - A, P - A), N) >= 0.0 &&
+                         dot(cross(D - C, P - C), N) >= 0.0 &&
+                         dot(cross(A - D, P - D), N) >= 0.0) hit = true;
 
-                if (dot(cross(C - A, P - A), N) >= 0.0 &&
-                    dot(cross(D - C, P - C), N) >= 0.0 &&
-                    dot(cross(A - D, P - D), N) >= 0.0) return true;
+                if (hit) {
+                    if (squares[i].Material_type == 2) continue;
+                    return true;
+                }
             }
         }
     }
@@ -384,7 +391,7 @@ bool traceShadow(vec3 ro, vec3 rd, float maxDist)
         vec3 invRd = 1.0 / rd;
         int stack[32];
         int stackPtr = 0;
-        stack[stackPtr++] = 0; // Push root
+        stack[stackPtr++] = 0;
 
         while (stackPtr > 0) {
             int nodeIdx = stack[--stackPtr];
@@ -418,7 +425,10 @@ bool traceShadow(vec3 ro, vec3 rd, float maxDist)
                             float v = dot(rd, qvec) * detInv;
                             if (v >= 0.0 && u + v <= 1.0) {
                                 float t = dot(e2, qvec) * detInv;
-                                if (t > 1e-4 && t < maxDist) return true; // Early exit
+                                if (t > 1e-4 && t < maxDist) {
+                                    if (materials[tri.matIdx].type == 2) continue;
+                                    return true;
+                                }
                             }
                         }
                     }
@@ -567,7 +577,7 @@ void mirror(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {
     throughput *= h.specular;
 }
 
-void glass(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {
+void glass(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput, inout uint seed) {
     float n1 = 1.0;
     float n2 = 1.5;
     float eta = n1 / n2;
@@ -584,8 +594,12 @@ void glass(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {
     }
 
     float k = 1.0 - eta * eta * (1.0 - cosi * cosi);
+    
+    float r0 = (n1 - n2) / (n1 + n2);
+    r0 = r0 * r0;
+    float fresnel = r0 + (1.0 - r0) * pow(1.0 - abs(cosi), 5.0);
 
-    if (k < 0.0) {
+    if (k < 0.0 || randf(seed) < fresnel) {
         rd = reflect(I, N);
         ro = h.pos + N * 1e-3;
     }
@@ -655,7 +669,7 @@ void main()
 
             // --- Verre ---
             if (h.Material_type == 2) {
-                glass(h, ro, rd, throughput);
+                glass(h, ro, rd, throughput, sseed);
                 continue;
             }
 
@@ -726,7 +740,7 @@ void main()
     }
 
     finalRadiance /= float(u_spp);
-    finalRadiance = min(finalRadiance, vec3(10.0));
+    finalRadiance = min(finalRadiance, vec3(2.0));
 
     imageStore(imgAccum, px, vec4(finalRadiance, 1.0));
 }

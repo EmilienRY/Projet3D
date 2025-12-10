@@ -1,0 +1,40 @@
+#version 430
+layout(local_size_x=16, local_size_y=16) in;
+
+layout(rgba32f, binding=0) uniform readonly  image2D imgNoisy;
+layout(rgba32f, binding=1) uniform writeonly image2D imgDenoised;
+layout(rgba32f, binding=2) uniform coherent image2D imgAccum;
+
+uniform int u_frameIndex;
+
+void main()
+{
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(imgNoisy);
+
+    if (px.x >= size.x || px.y >= size.y) return;
+
+    vec3 noisy = imageLoad(imgNoisy, px).rgb;
+    
+    noisy = min(noisy, vec3(2.0));
+
+    vec3 accum = noisy;
+
+    if (u_frameIndex > 0)
+    {
+        vec3 prev = imageLoad(imgAccum, px).rgb;
+        
+        float lumPrev = dot(prev, vec3(0.2126, 0.7152, 0.0722));
+        float lumNoisy = dot(noisy, vec3(0.2126, 0.7152, 0.0722));
+        
+        if (lumNoisy > lumPrev * 5.0 + 1.0) {
+            noisy = prev;
+        }
+
+        float alpha = 1.0 / float(u_frameIndex + 1);
+        accum = mix(prev, noisy, alpha);
+    }
+    imageStore(imgAccum, px, vec4(accum, 1.0));
+    
+    imageStore(imgDenoised, px, vec4(accum, 1.0));
+}

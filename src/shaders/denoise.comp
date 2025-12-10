@@ -10,6 +10,7 @@ layout(rgba32f, binding=5) uniform readonly  image2D imgInputPass;
 uniform int u_frameIndex;
 uniform int u_stepSize;
 uniform int u_passIndex;
+uniform float u_phiColor;
 
 float gaussian(float x, float sigma)
 {
@@ -28,11 +29,22 @@ void main()
     if (u_passIndex == 0)
     {
         vec3 noisy = imageLoad(imgNoisy, px).rgb;
+        
+        noisy = min(noisy, vec3(2.0));
+
         vec3 accum = noisy;
 
         if (u_frameIndex > 0)
         {
             vec3 prev = imageLoad(imgAccum, px).rgb;
+            
+            float lumPrev = dot(prev, vec3(0.2126, 0.7152, 0.0722));
+            float lumNoisy = dot(noisy, vec3(0.2126, 0.7152, 0.0722));
+            
+            if (lumNoisy > lumPrev * 5.0 + 1.0) {
+                noisy = prev;
+            }
+
             float alpha = 1.0 / float(u_frameIndex + 1);
             accum = mix(prev, noisy, alpha);
         }
@@ -74,8 +86,10 @@ void main()
 
             vec3 diff = c - centerColor;
             float dist = length(log(vec3(1.0)+c) - log(vec3(1.0)+centerColor));
-
-            float sigmaColor = 0.5 * float(u_passIndex + 1); 
+            float dynamicFactor = 1.0 + (4.0 / float(u_frameIndex + 1));
+            
+            float sigmaColor = (u_phiColor * float(u_passIndex + 1)) * dynamicFactor;
+            
             float wc = exp(-(dist*dist)/(2*sigmaColor*sigmaColor));
 
             float wn = 1.0;

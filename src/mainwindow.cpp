@@ -362,7 +362,7 @@ mainWindow::mainWindow(QWidget *parent)
     globalLayout->addRow("FPS :", fpsLabel);
     connect(m_glWindow, &OpenGLWindow::fpsChanged, this, &mainWindow::updateFps);
 
-    // Max Bounces
+    // Max rebond
     QSlider *maxBouncesSlider = new QSlider(Qt::Horizontal);
     maxBouncesSlider->setRange(0, 20);
     maxBouncesSlider->setValue(4);
@@ -373,7 +373,7 @@ mainWindow::mainWindow(QWidget *parent)
     });
     connect(maxBouncesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setMaxBounces);
 
-    // Shadow Samples
+    // nb ray ombre
     QSlider *shadowSamplesSlider = new QSlider(Qt::Horizontal);
     shadowSamplesSlider->setRange(1, 32);
     shadowSamplesSlider->setValue(1);
@@ -384,7 +384,7 @@ mainWindow::mainWindow(QWidget *parent)
     });
     connect(shadowSamplesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setShadowSamples);
 
-    // SPP
+    // nb rayons par pixels
     QSlider *sppSlider = new QSlider(Qt::Horizontal);
     sppSlider->setRange(1, 16);
     sppSlider->setValue(1);
@@ -394,6 +394,35 @@ mainWindow::mainWindow(QWidget *parent)
         sppLabel->setText(QString("Rays/Pixel : %1").arg(value));
     });
     connect(sppSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setSpp);
+
+    // Denoise Mode
+    QComboBox *denoiseModeCombo = new QComboBox();
+    denoiseModeCombo->addItem("Accumulation + Denoise");
+    denoiseModeCombo->addItem("Accumulation Only");
+    globalLayout->addRow("Denoise Mode :", denoiseModeCombo);
+    connect(denoiseModeCombo, &QComboBox::currentIndexChanged, m_glWindow, &OpenGLWindow::setDenoiseMode);
+
+    // Denoise Strength
+    QSlider *denoiseStrengthSlider = new QSlider(Qt::Horizontal);
+    denoiseStrengthSlider->setRange(1, 20); // 0.1 to 2.0
+    denoiseStrengthSlider->setValue(5); // Default 0.5
+    QLabel *denoiseStrengthLabel = new QLabel(QString("Denoise Strength : %1").arg(denoiseStrengthSlider->value()/10.0));
+    globalLayout->addRow(denoiseStrengthLabel, denoiseStrengthSlider);
+    connect(denoiseStrengthSlider, &QSlider::valueChanged, this, [denoiseStrengthLabel](int value){
+        denoiseStrengthLabel->setText(QString("Denoise Strength : %1").arg(value/10.0));
+    });
+    connect(denoiseStrengthSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setDenoiseStrength);
+
+    // Denoise Passes
+    QSlider *denoisePassesSlider = new QSlider(Qt::Horizontal);
+    denoisePassesSlider->setRange(1, 5);
+    denoisePassesSlider->setValue(3);
+    QLabel *denoisePassesLabel = new QLabel(QString("Denoise Passes : %1").arg(denoisePassesSlider->value()));
+    globalLayout->addRow(denoisePassesLabel, denoisePassesSlider);
+    connect(denoisePassesSlider, &QSlider::valueChanged, this, [denoisePassesLabel](int value){
+        denoisePassesLabel->setText(QString("Denoise Passes : %1").arg(value));
+    });
+    connect(denoisePassesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setDenoisePasses);
 
     QPushButton *resetBtn = new QPushButton("Reset Scene");
     globalLayout->addRow(resetBtn);

@@ -47,6 +47,9 @@ public:
     void setMaxBounces(int value);
     void setShadowSamples(int value);
     void setSpp(int value);
+    void setDenoiseMode(int mode);
+    void setDenoiseStrength(int value);
+    void setDenoisePasses(int value);
 
     Scene* scene() { return m_scene; }
     void setSelectedMesh(int index);
@@ -116,6 +119,7 @@ private:
     QOpenGLShaderProgram* m_computeProgram = nullptr;
     QOpenGLShaderProgram* m_screenProgram  = nullptr;
     QOpenGLShaderProgram* m_denoiseProgram  = nullptr;
+    QOpenGLShaderProgram* m_accumulationProgram = nullptr;
 
     GLuint m_ssboSpheres = 0;
     GLuint m_ssboLights  = 0;
@@ -138,6 +142,9 @@ private:
     int m_maxBounces = 4;
     int m_shadowSamples = 1;
     int m_spp = 1;
+    int m_denoiseMode = 0; // 0 = Denoise, 1 = Accumulation Only
+    float m_denoiseStrength = 0.5f;
+    int m_denoisePasses = 3;
 
     bool m_offLineMode = false;
 
