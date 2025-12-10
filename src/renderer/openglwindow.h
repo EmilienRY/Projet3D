@@ -44,6 +44,9 @@ public:
     void setLightZ(int value);
     void setIntensity(int value);
     void setRadius(int value);
+    void setMaxBounces(int value);
+    void setShadowSamples(int value);
+    void setSpp(int value);
 
     Scene* scene() { return m_scene; }
     void setSelectedMesh(int index);
@@ -134,6 +137,7 @@ private:
     int m_accumFrame = 0;
     int m_maxBounces = 4;
     int m_shadowSamples = 1;
+    int m_spp = 1;
 
     bool m_offLineMode = false;
 

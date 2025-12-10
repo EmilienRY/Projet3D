@@ -362,6 +362,39 @@ mainWindow::mainWindow(QWidget *parent)
     globalLayout->addRow("FPS :", fpsLabel);
     connect(m_glWindow, &OpenGLWindow::fpsChanged, this, &mainWindow::updateFps);
 
+    // Max Bounces
+    QSlider *maxBouncesSlider = new QSlider(Qt::Horizontal);
+    maxBouncesSlider->setRange(0, 20);
+    maxBouncesSlider->setValue(4);
+    QLabel *maxBouncesLabel = new QLabel(QString("Max Bounces : %1").arg(maxBouncesSlider->value()));
+    globalLayout->addRow(maxBouncesLabel, maxBouncesSlider);
+    connect(maxBouncesSlider, &QSlider::valueChanged, this, [maxBouncesLabel](int value){
+        maxBouncesLabel->setText(QString("Max Bounces : %1").arg(value));
+    });
+    connect(maxBouncesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setMaxBounces);
+
+    // Shadow Samples
+    QSlider *shadowSamplesSlider = new QSlider(Qt::Horizontal);
+    shadowSamplesSlider->setRange(1, 32);
+    shadowSamplesSlider->setValue(1);
+    QLabel *shadowSamplesLabel = new QLabel(QString("Shadow Rays : %1").arg(shadowSamplesSlider->value()));
+    globalLayout->addRow(shadowSamplesLabel, shadowSamplesSlider);
+    connect(shadowSamplesSlider, &QSlider::valueChanged, this, [shadowSamplesLabel](int value){
+        shadowSamplesLabel->setText(QString("Shadow Rays : %1").arg(value));
+    });
+    connect(shadowSamplesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setShadowSamples);
+
+    // SPP
+    QSlider *sppSlider = new QSlider(Qt::Horizontal);
+    sppSlider->setRange(1, 16);
+    sppSlider->setValue(1);
+    QLabel *sppLabel = new QLabel(QString("Rays/Pixel : %1").arg(sppSlider->value()));
+    globalLayout->addRow(sppLabel, sppSlider);
+    connect(sppSlider, &QSlider::valueChanged, this, [sppLabel](int value){
+        sppLabel->setText(QString("Rays/Pixel : %1").arg(value));
+    });
+    connect(sppSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setSpp);
+
     QPushButton *resetBtn = new QPushButton("Reset Scene");
     globalLayout->addRow(resetBtn);
 
@@ -426,7 +459,6 @@ void mainWindow::openOffMesh()
 
         QMetaObject::invokeMethod(this, [=]() {
             m_glWindow->openOffMesh(fileName, verts, idx, mat);
-            statusBar()->showMessage("Mesh loaded");
         });
     });
 }
@@ -460,7 +492,6 @@ void mainWindow::openObjMesh()
 
         QMetaObject::invokeMethod(m_glWindow, [=]() {
             m_glWindow->openOBJmesh(fileName, verts, idx, faceCount, mat);
-            statusBar()->showMessage("Mesh loaded");
         });
     });
 }

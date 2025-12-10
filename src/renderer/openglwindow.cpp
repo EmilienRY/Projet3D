@@ -479,8 +479,7 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->setUniformValue("u_maxBounces",  m_maxBounces);
     m_computeProgram->setUniformValue("u_shadowSamples",  m_shadowSamples);
 
-    int currentSpp  = 1;
-    m_computeProgram->setUniformValue("u_spp", currentSpp);
+    m_computeProgram->setUniformValue("u_spp", m_spp);
 
     glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glBindImageTexture(4, m_gBufferTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
@@ -1433,6 +1432,33 @@ void OpenGLWindow::addPlane(QVector<Mesh::Vertex> verts, QVector<unsigned int> i
 
 void OpenGLWindow::updateLightList(){
     emit sceneReady();
+}
+
+void OpenGLWindow::setMaxBounces(int value)
+{
+    if (m_maxBounces != value) {
+        m_maxBounces = value;
+        resetAccumulation();
+        update();
+    }
+}
+
+void OpenGLWindow::setShadowSamples(int value)
+{
+    if (m_shadowSamples != value) {
+        m_shadowSamples = value;
+        resetAccumulation();
+        update();
+    }
+}
+
+void OpenGLWindow::setSpp(int value)
+{
+    if (m_spp != value) {
+        m_spp = value;
+        resetAccumulation();
+        update();
+    }
 }
 
 
