@@ -29,6 +29,7 @@ private slots:
 private:
     OpenGLWindow *m_glWindow;
     QComboBox *meshSelector;
+    QComboBox *typeMat;
     QComboBox *lightSelector;
     void on_resetButton_clicked();
 

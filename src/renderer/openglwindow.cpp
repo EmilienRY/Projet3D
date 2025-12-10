@@ -49,6 +49,7 @@ void OpenGLWindow::changeScene()
     resetAccumulation();
     doneCurrent();
     update();
+    emit sceneReady();
 }
 
 void OpenGLWindow::initializeGL()
@@ -994,10 +995,29 @@ void OpenGLWindow::setSelectedLight(int index){
     update();
 }
 
+void OpenGLWindow::setSelectedTypeMat(int index){
+    m_selectedType = index;
+
+    if (!m_scene || m_scene->meshes().isEmpty()) {
+        return;
+    }
+
+    if (m_selectedMesh < 0 || m_selectedMesh >= m_scene->meshes().size()) {
+        return;
+    }
+
+    if (index >= 0 && index < 3) {
+        m_scene->meshes()[m_selectedMesh]->m_material.type = index;
+    }
+
+    uploadSceneToGPU();
+    resetAccumulation();
+    update();
+}
+
 void OpenGLWindow::resetScene(){
     m_sceneIndex -=1;
     changeScene();
-
     resetAccumulation();
 }
 

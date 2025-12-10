@@ -49,8 +49,11 @@ public:
     Scene* scene() { return m_scene; }
     void setSelectedMesh(int index);
     void setSelectedLight(int index);
+    void setSelectedTypeMat(int index);
     int m_selectedMesh = -1;
     int m_selectedLight = -1;
+    int m_selectedType = -1;
+
 
     void changeColor(QColor color);
     void changeColorSpec(QColor color);
@@ -152,7 +155,7 @@ private:
         void sceneReady();
         void selectedMeshChanged(int index, QVector3D position, QVector3D rota, float scale, Material mat);
         void selectedLightChanged(int index, QVector3D position, float intensity, float radius);
-
+        void selectedTypeChanged(int index);
 
 
 };

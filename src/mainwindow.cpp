@@ -57,19 +57,20 @@ mainWindow::mainWindow(QWidget *parent)
 
 
     connect(m_glWindow, &OpenGLWindow::sceneReady, this, [this]() {
+        {
+            meshSelector->clear();
 
-        meshSelector->clear();
+            Scene* scene = m_glWindow->scene();
+            if (!scene) return;
 
-        Scene* scene = m_glWindow->scene();
-        if (!scene) return;
-
-        const QVector<Mesh*>& meshes = scene->meshes();
-        for (int i = 0; i < meshes.size(); ++i) {
-            if (meshes[i]->name != nullptr) {
-                meshSelector->addItem(meshes[i]->name);
-            }
-            else{
-                meshSelector->addItem(QString("Mesh %1").arg(i));
+            const QVector<Mesh*>& meshes = scene->meshes();
+            for (int i = 0; i < meshes.size(); ++i) {
+                if (meshes[i]->name != nullptr) {
+                    meshSelector->addItem(meshes[i]->name);
+                }
+                else{
+                    meshSelector->addItem(QString("Mesh %1").arg(i));
+                }
             }
         }
     });
@@ -172,6 +173,16 @@ mainWindow::mainWindow(QWidget *parent)
     shininessSlider->setRange(1, 200);
     layout->addRow(QString("Shininess : %1").arg(shininessSlider->value()), shininessSlider);
 
+    typeMat = new QComboBox(this);
+    layout->addRow("Type de matériel :", typeMat);
+
+    typeMat->addItem("Mate");
+    typeMat->addItem("Mirroir");
+    typeMat->addItem("Verre");
+
+    connect(typeMat, &QComboBox::currentIndexChanged,
+            m_glWindow, &OpenGLWindow::setSelectedTypeMat);
+
     // Light
 
     lightSelector = new QComboBox();
@@ -179,15 +190,20 @@ mainWindow::mainWindow(QWidget *parent)
 
 
     connect(m_glWindow, &OpenGLWindow::sceneReady, this, [this]() {
+        {
+            QSignalBlocker blocker(lightSelector);
+            lightSelector->clear();
 
-        lightSelector->clear();
+            Scene* scene = m_glWindow->scene();
+            if (!scene) return;
 
-        Scene* scene = m_glWindow->scene();
-        if (!scene) return;
-
-        const QVector<Light>& lights = scene->lights();
-        for (int i = 0; i < lights.size(); ++i) {
-            lightSelector->addItem(QString("Light %1").arg(i));
+            const QVector<Light>& lights = scene->lights();
+            for (int i = 0; i < lights.size(); ++i) {
+                lightSelector->addItem(QString("Light %1").arg(i));
+            }
+        }
+        if (lightSelector->count() > 0) {
+            lightSelector->setCurrentIndex(0);
         }
     });
 
@@ -337,12 +353,14 @@ void mainWindow::on_resetButton_clicked()
         rotationYslider->setValue(meshes[m_glWindow->m_selectedMesh]->rotation.y());
         rotationZslider->setValue(meshes[m_glWindow->m_selectedMesh]->rotation.z());
 
-        scaleSlider->setValue(meshes[m_glWindow->m_selectedMesh]->scale * 10.0);
+        scaleSlider->setValue(meshes[m_glWindow->m_selectedMesh]->scale * 10);
 
         kdSlider->setValue(meshes[m_glWindow->m_selectedMesh]->material().kd * 100);
         ksSlider->setValue(meshes[m_glWindow->m_selectedMesh]->material().ks * 100);
 
         shininessSlider->setValue(meshes[m_glWindow->m_selectedMesh]->material().shininess);
+        
+        typeMat->setCurrentIndex(meshes[m_glWindow->m_selectedMesh]->material().type);
     }
 
     meshSelector->clear();
@@ -355,6 +373,24 @@ void mainWindow::on_resetButton_clicked()
             meshSelector->addItem(QString("Mesh %1").arg(i));
         }
     }
+
+    const QVector<Light>& lights = scene->lights();
+
+    if (!lights.isEmpty() && m_glWindow->m_selectedLight >= 0 && m_glWindow->m_selectedLight < lights.size()) {
+        xLightSlider->setValue(lights[m_glWindow->m_selectedLight].position.x() * 10);
+        yLightSlider->setValue(lights[m_glWindow->m_selectedLight].position.y() * 10);
+        zLightSlider->setValue(lights[m_glWindow->m_selectedLight].position.z() * 10);
+
+        lightIntensitySlider->setValue(lights[m_glWindow->m_selectedLight].intensity * 10);
+        lighRadiusSlider->setValue(lights[m_glWindow->m_selectedLight].lightRadius * 10);
+
+    }
+
+    lightSelector->clear();
+
+    for (int i = 0; i < lights.size(); ++i) {
+        lightSelector->addItem(QString("Light %1").arg(i));
+    }
 }
 
 void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale, Material mat)
@@ -362,6 +398,7 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     QSignalBlocker b1(xSlider);
     QSignalBlocker b2(ySlider);
     QSignalBlocker b3(zSlider);
+    QSignalBlocker b4(typeMat);
 
     xSlider->setValue(pos.x() * 10);
     ySlider->setValue(pos.y() * 10);
@@ -377,6 +414,9 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     ksSlider->setValue(mat.ks *100);
 
     shininessSlider->setValue(mat.shininess);
+    
+    // Mettre à jour le type de matériau
+    typeMat->setCurrentIndex(mat.type);
 }
 
 void mainWindow::onLighthSelected(int index, QVector3D pos, float intensity, float radius)
@@ -429,5 +469,3 @@ void mainWindow::addLight(){
     m_glWindow->scene()->addLight(l);
     m_glWindow->updateLightList();
 }
-
-
