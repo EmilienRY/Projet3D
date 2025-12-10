@@ -10,6 +10,7 @@
 #include "scene/mesh.h"
 #include "scene/scene.h"
 #include "gpu_stucts.h"
+#include <QCursor>
 
 
 OpenGLWindow::OpenGLWindow(QWindow *parent)
@@ -778,10 +779,13 @@ void OpenGLWindow::mousePressEvent(QMouseEvent *ev)
 {
     if (ev->button() == Qt::LeftButton && !m_fpsActive) {
         m_fpsActive = true;
-        m_lastMousePos = ev->position();
         setCursor(Qt::BlankCursor);
         setKeyboardGrabEnabled(true);
         setMouseGrabEnabled(true);
+        
+        QPoint center = QPoint(width() / 2, height() / 2);
+        QCursor::setPos(mapToGlobal(center));
+        m_lastMousePos = center;
     }
 
 
@@ -796,11 +800,17 @@ void OpenGLWindow::mouseMoveEvent(QMouseEvent *ev)
         return;
     }
 
+    QPoint center = QPoint(width() / 2, height() / 2);
     QPointF cur = ev->position();
-    QPointF delta = cur - m_lastMousePos;
-    m_lastMousePos = cur;
+    QPointF delta = cur - center;
+
+    if (qAbs(delta.x()) < 0.1 && qAbs(delta.y()) < 0.1) return;
 
     m_camera.processMouseMovement(delta.x(), -delta.y());
+    
+    QCursor::setPos(mapToGlobal(center));
+    m_lastMousePos = center;
+
     resetAccumulation();
 }
 
@@ -1220,7 +1230,21 @@ void OpenGLWindow::changeColor(QColor color){
     uploadSceneToGPU();
 }
 
+void OpenGLWindow::setTexture(QString path)
+{
+    makeCurrent();
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
 
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+    mesh->m_material.texturePath = path;
+
+    resetAccumulation();
+    update();
+    uploadSceneToGPU();
+}
 
 void OpenGLWindow::changeColorSpec(QColor color){
     if (!m_scene || m_scene->meshes().isEmpty()) return;
@@ -1264,6 +1288,8 @@ void OpenGLWindow::setLightX(int value)
 
     lights[m_selectedLight].position.setX(value / 10.0f);
 
+    emit selectedLightChanged(m_selectedLight, lights[m_selectedLight].position, lights[m_selectedLight].intensity, lights[m_selectedLight].lightRadius);
+
     uploadSceneToGPU();
     resetAccumulation();
     update();
@@ -1277,6 +1303,8 @@ void OpenGLWindow::setLightY(int value)
     if (m_selectedLight < 0 || m_selectedLight >= lights.size()) return;
 
     lights[m_selectedLight].position.setY(value / 10.0f);
+
+    emit selectedLightChanged(m_selectedLight, lights[m_selectedLight].position, lights[m_selectedLight].intensity, lights[m_selectedLight].lightRadius);
 
     uploadSceneToGPU();
     resetAccumulation();
@@ -1292,6 +1320,8 @@ void OpenGLWindow::setLightZ(int value)
 
     lights[m_selectedLight].position.setZ(value / 10.0f);
 
+    emit selectedLightChanged(m_selectedLight, lights[m_selectedLight].position, lights[m_selectedLight].intensity, lights[m_selectedLight].lightRadius);
+
     uploadSceneToGPU();
     resetAccumulation();
     update();
@@ -1306,6 +1336,8 @@ void OpenGLWindow::setIntensity(int value)
 
     lights[m_selectedLight].intensity = (float)value / 10.0f;
 
+    emit selectedLightChanged(m_selectedLight, lights[m_selectedLight].position, lights[m_selectedLight].intensity, lights[m_selectedLight].lightRadius);
+
     uploadSceneToGPU();
     resetAccumulation();
     update();
@@ -1319,6 +1351,8 @@ void OpenGLWindow::setRadius(int value)
     if (m_selectedLight < 0 || m_selectedLight >= lights.size()) return;
 
     lights[m_selectedLight].lightRadius = (float)value / 10.0f;
+
+    emit selectedLightChanged(m_selectedLight, lights[m_selectedLight].position, lights[m_selectedLight].intensity, lights[m_selectedLight].lightRadius);
 
     uploadSceneToGPU();
     resetAccumulation();
@@ -1398,10 +1432,6 @@ void OpenGLWindow::addPlane(QVector<Mesh::Vertex> verts, QVector<unsigned int> i
 }
 
 void OpenGLWindow::updateLightList(){
-    uploadSceneToGPU();
-    resetAccumulation();
-    doneCurrent();
-    update();
     emit sceneReady();
 }
 

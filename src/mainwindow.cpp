@@ -48,7 +48,7 @@ mainWindow::mainWindow(QWidget *parent)
 
     QDockWidget *dock = new QDockWidget("Scene Controls", this);
     dock->setAllowedAreas(Qt::RightDockWidgetArea);
-    dock->setFixedWidth(350);
+    dock->setFixedWidth(450);
 
     QScrollArea *scrollArea = new QScrollArea();
     scrollArea->setWidgetResizable(true);
@@ -95,22 +95,22 @@ mainWindow::mainWindow(QWidget *parent)
     ySlider->setRange(-100, 100);
     zSlider->setRange(-100, 100);
 
-    xLabel = new QLabel(QString("Translation X : %1").arg(xSlider->value()/10.0));
+    xLabel = new QLabel(QString::asprintf("Translation X : %5.1f", xSlider->value()/10.0));
     meshLayout->addRow(xLabel, xSlider);
     connect(xSlider, &QSlider::valueChanged, this, [this](int value){
-        xLabel->setText(QString("Translation X : %1").arg(value/10.0));
+        xLabel->setText(QString::asprintf("Translation X : %5.1f", value/10.0));
     });
 
-    yLabel = new QLabel(QString("Translation Y : %1").arg(ySlider->value()/10.0));
+    yLabel = new QLabel(QString::asprintf("Translation Y : %5.1f", ySlider->value()/10.0));
     meshLayout->addRow(yLabel, ySlider);
     connect(ySlider, &QSlider::valueChanged, this, [this](int value){
-        yLabel->setText(QString("Translation Y : %1").arg(value/10.0));
+        yLabel->setText(QString::asprintf("Translation Y : %5.1f", value/10.0));
     });
 
-    zLabel = new QLabel(QString("Translation Z : %1").arg(zSlider->value()/10.0));
+    zLabel = new QLabel(QString::asprintf("Translation Z : %5.1f", zSlider->value()/10.0));
     meshLayout->addRow(zLabel, zSlider);
     connect(zSlider, &QSlider::valueChanged, this, [this](int value){
-        zLabel->setText(QString("Translation Z : %1").arg(value/10.0));
+        zLabel->setText(QString::asprintf("Translation Z : %5.1f", value/10.0));
     });
 
     rotationXslider = new QSlider(Qt::Horizontal);
@@ -141,10 +141,10 @@ mainWindow::mainWindow(QWidget *parent)
 
     scaleSlider = new QSlider(Qt::Horizontal);
     scaleSlider->setRange(1, 50);
-    scaleLabel = new QLabel(QString("Scale : %1").arg(scaleSlider->value()/10.0));
+    scaleLabel = new QLabel(QString("Scale : %1").arg(QString::number(scaleSlider->value()/10.0, 'f', 1)));
     meshLayout->addRow(scaleLabel, scaleSlider);
     connect(scaleSlider, &QSlider::valueChanged, this, [this](int value){
-        scaleLabel->setText(QString("Scale : %1").arg(value/10.0));
+        scaleLabel->setText(QString("Scale : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
     meshGroup->setLayout(meshLayout);
@@ -178,7 +178,27 @@ mainWindow::mainWindow(QWidget *parent)
         dialog->open();
     });
 
+    QPushButton *btnTexture = new QPushButton("Choisir Texture");
+    matLayout->addRow("Texture :", btnTexture);
 
+    connect(btnTexture, &QPushButton::clicked, this, [this]() {
+        QFileDialog dialog(this);
+        dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+        dialog.setNameFilter("Images (*.png *.jpg *.bmp)");
+        dialog.setWindowTitle("Select Texture");
+
+        if (dialog.exec() == QDialog::Accepted) {
+            QString fileName = dialog.selectedFiles().first();
+            m_glWindow->setTexture(fileName);
+        }
+    });
+
+    QPushButton *btnRemoveTexture = new QPushButton("Supprimer Texture");
+    matLayout->addRow("", btnRemoveTexture);
+
+    connect(btnRemoveTexture, &QPushButton::clicked, this, [this]() {
+        m_glWindow->setTexture("");
+    });
 
 
     QPushButton *btnSpecularColor = new QPushButton("Changer Couleur reflets");
@@ -205,16 +225,16 @@ mainWindow::mainWindow(QWidget *parent)
     ksSlider->setRange(0, 100);
     kdSlider->setRange(0, 100);
 
-    ksLabel = new QLabel(QString("ks : %1").arg(ksSlider->value()/100.0));
+    ksLabel = new QLabel(QString("ks : %1").arg(QString::number(ksSlider->value()/100.0, 'f', 2)));
     matLayout->addRow(ksLabel, ksSlider);
     connect(ksSlider, &QSlider::valueChanged, this, [this](int value){
-        ksLabel->setText(QString("ks : %1").arg(value/100.0));
+        ksLabel->setText(QString("ks : %1").arg(QString::number(value/100.0, 'f', 2)));
     });
 
-    kdLabel = new QLabel(QString("kd : %1").arg(kdSlider->value()/100.0));
+    kdLabel = new QLabel(QString("kd : %1").arg(QString::number(kdSlider->value()/100.0, 'f', 2)));
     matLayout->addRow(kdLabel, kdSlider);
     connect(kdSlider, &QSlider::valueChanged, this, [this](int value){
-        kdLabel->setText(QString("kd : %1").arg(value/100.0));
+        kdLabel->setText(QString("kd : %1").arg(QString::number(value/100.0, 'f', 2)));
     });
 
     shininessSlider = new QSlider(Qt::Horizontal);
@@ -261,6 +281,7 @@ mainWindow::mainWindow(QWidget *parent)
         }
         if (lightSelector->count() > 0) {
             lightSelector->setCurrentIndex(0);
+            m_glWindow->setSelectedLight(0);
         }
     });
 
@@ -276,22 +297,22 @@ mainWindow::mainWindow(QWidget *parent)
     yLightSlider->setRange(-100, 100);
     zLightSlider->setRange(-100, 100);
 
-    lightXLabel = new QLabel(QString("Light Translation X : %1").arg(xLightSlider->value()/10.0));
+    lightXLabel = new QLabel(QString("Light Translation X : %1").arg(QString::number(xLightSlider->value()/10.0, 'f', 1)));
     lightLayout->addRow(lightXLabel, xLightSlider);
     connect(xLightSlider, &QSlider::valueChanged, this, [this](int value){
-        lightXLabel->setText(QString("Light Translation X : %1").arg(value/10.0));
+        lightXLabel->setText(QString("Light Translation X : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
-    lightYLabel = new QLabel(QString("Light Translation Y : %1").arg(yLightSlider->value()/10.0));
+    lightYLabel = new QLabel(QString("Light Translation Y : %1").arg(QString::number(yLightSlider->value()/10.0, 'f', 1)));
     lightLayout->addRow(lightYLabel, yLightSlider);
     connect(yLightSlider, &QSlider::valueChanged, this, [this](int value){
-        lightYLabel->setText(QString("Light Translation Y : %1").arg(value/10.0));
+        lightYLabel->setText(QString("Light Translation Y : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
-    lightZLabel = new QLabel(QString("Light Translation Z : %1").arg(zLightSlider->value()/10.0));
+    lightZLabel = new QLabel(QString("Light Translation Z : %1").arg(QString::number(zLightSlider->value()/10.0, 'f', 1)));
     lightLayout->addRow(lightZLabel, zLightSlider);
     connect(zLightSlider, &QSlider::valueChanged, this, [this](int value){
-        lightZLabel->setText(QString("Light Translation Z : %1").arg(value/10.0));
+        lightZLabel->setText(QString("Light Translation Z : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
     QPushButton *btnLightColor = new QPushButton("Changer Couleur Lumière");
@@ -315,19 +336,19 @@ mainWindow::mainWindow(QWidget *parent)
     lightIntensitySlider = new QSlider(Qt::Horizontal);
     lighRadiusSlider = new QSlider(Qt::Horizontal);
 
-    lightIntensitySlider->setRange(1, 100);
+    lightIntensitySlider->setRange(1, 1000);
     lighRadiusSlider->setRange(0, 100);
 
-    intensityLabel = new QLabel(QString("Intensitée : %1").arg(lightIntensitySlider->value()/10.0));
+    intensityLabel = new QLabel(QString("Intensitée : %1").arg(QString::number(lightIntensitySlider->value()/10.0, 'f', 1)));
     lightLayout->addRow(intensityLabel, lightIntensitySlider);
     connect(lightIntensitySlider, &QSlider::valueChanged, this, [this](int value){
-        intensityLabel->setText(QString("Intensitée : %1").arg(value/10.0));
+        intensityLabel->setText(QString("Intensitée : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
-    radiusLabel = new QLabel(QString("Rayon Lumière : %1").arg(lighRadiusSlider->value()/10.0));
+    radiusLabel = new QLabel(QString("Rayon Lumière : %1").arg(QString::number(lighRadiusSlider->value()/10.0, 'f', 1)));
     lightLayout->addRow(radiusLabel, lighRadiusSlider);
     connect(lighRadiusSlider, &QSlider::valueChanged, this, [this](int value){
-        radiusLabel->setText(QString("Rayon Lumière : %1").arg(value/10.0));
+        radiusLabel->setText(QString("Rayon Lumière : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
     lightGroup->setLayout(lightLayout);
@@ -520,9 +541,9 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     ySlider->setValue(pos.y() * 10);
     zSlider->setValue(pos.z() * 10);
 
-    xLabel->setText(QString("Translation X : %1").arg(pos.x()));
-    yLabel->setText(QString("Translation Y : %1").arg(pos.y()));
-    zLabel->setText(QString("Translation Z : %1").arg(pos.z()));
+    xLabel->setText(QString::asprintf("Translation X : %5.1f", pos.x()));
+    yLabel->setText(QString::asprintf("Translation Y : %5.1f", pos.y()));
+    zLabel->setText(QString::asprintf("Translation Z : %5.1f", pos.z()));
 
     rotationXslider->setValue(rota.x());
     rotationYslider->setValue(rota.y());
@@ -533,18 +554,17 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     rotZLabel->setText(QString("Rotation Z : %1").arg(rota.z()));
 
     scaleSlider->setValue(scale * 10.0);
-    scaleLabel->setText(QString("Scale : %1").arg(scale));
+    scaleLabel->setText(QString::asprintf("Scale : %5.1f", scale));
 
     kdSlider->setValue(mat.kd *100);
     ksSlider->setValue(mat.ks *100);
 
-    kdLabel->setText(QString("kd : %1").arg(mat.kd));
-    ksLabel->setText(QString("ks : %1").arg(mat.ks));
+    kdLabel->setText(QString::asprintf("kd : %5.2f", mat.kd));
+    ksLabel->setText(QString::asprintf("ks : %5.2f", mat.ks));
 
     shininessSlider->setValue(mat.shininess);
     shininessLabel->setText(QString("Shininess : %1").arg(mat.shininess));
     
-    // Mettre à jour le type de matériau
     typeMat->setCurrentIndex(mat.type);
 }
 
@@ -560,15 +580,15 @@ void mainWindow::onLighthSelected(int index, QVector3D pos, float intensity, flo
     yLightSlider->setValue(pos.y() * 10);
     zLightSlider->setValue(pos.z() * 10);
 
-    lightXLabel->setText(QString("Light Translation X : %1").arg(pos.x()));
-    lightYLabel->setText(QString("Light Translation Y : %1").arg(pos.y()));
-    lightZLabel->setText(QString("Light Translation Z : %1").arg(pos.z()));
+    lightXLabel->setText(QString::asprintf("Light Translation X : %5.1f", pos.x()));
+    lightYLabel->setText(QString::asprintf("Light Translation Y : %5.1f", pos.y()));
+    lightZLabel->setText(QString::asprintf("Light Translation Z : %5.1f", pos.z()));
 
     lightIntensitySlider->setValue(intensity * 10);
     lighRadiusSlider->setValue(radius *10);
 
-    intensityLabel->setText(QString("Intensitée : %1").arg(intensity));
-    radiusLabel->setText(QString("Rayon Lumière : %1").arg(radius));
+    intensityLabel->setText(QString::asprintf("Intensitée : %5.1f", intensity));
+    radiusLabel->setText(QString::asprintf("Rayon Lumière : %5.1f", radius));
 }
 
 void mainWindow::updateFps(float fps)
