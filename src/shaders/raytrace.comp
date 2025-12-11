@@ -733,7 +733,7 @@ void main()
                 albedo = texture(s, h.uv).rgb;
             }
 
-            vec3 directLight = albedo * 0.05;
+            vec3 directLight = vec3(0.0);
 
             for (int li = 0; li < u_lightCount; li++)
             {
@@ -791,7 +791,7 @@ void main()
     }
 
     finalRadiance /= float(u_spp);
-    finalRadiance = min(finalRadiance, vec3(2.0));
+    // finalRadiance = min(finalRadiance, vec3(2.0)); // Removed aggressive clamping
 
     imageStore(imgAccum, px, vec4(finalRadiance, 1.0));
 }
