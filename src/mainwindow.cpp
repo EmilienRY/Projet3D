@@ -9,6 +9,7 @@
 #include <QDockWidget>
 #include <QFormLayout>
 #include <QSlider>
+#include <QCheckBox>
 #include <QPushButton>
 #include <QLabel>
 #include <QComboBox>
@@ -448,6 +449,34 @@ mainWindow::mainWindow(QWidget *parent)
         denoisePassesLabel->setText(QString("Denoise Passes : %1").arg(value));
     });
     connect(denoisePassesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setDenoisePasses);
+
+    QCheckBox *dofCheckbox = new QCheckBox("Enable Depth of Field");
+    dofCheckbox->setChecked(false);
+    globalLayout->addRow(dofCheckbox);
+
+    QSlider *lensRadiusSlider = new QSlider(Qt::Horizontal);
+    lensRadiusSlider->setRange(0, 100);
+    lensRadiusSlider->setValue(0);
+    QLabel *lensRadiusLabel = new QLabel(QString("Aperture (lens radius) : %1").arg(QString::number(lensRadiusSlider->value() / 1000.0, 'f', 3)));
+    globalLayout->addRow(lensRadiusLabel, lensRadiusSlider);
+    connect(lensRadiusSlider, &QSlider::valueChanged, this, [this, lensRadiusLabel](int value){
+        float v = value / 1000.0f;
+        lensRadiusLabel->setText(QString("Aperture (lens radius) : %1").arg(QString::number(v, 'f', 3)));
+        m_glWindow->setLensRadius(v);
+    });
+
+    QSlider *focalDistanceSlider = new QSlider(Qt::Horizontal);
+    focalDistanceSlider->setRange(1, 200); 
+    focalDistanceSlider->setValue(50); 
+    QLabel *focalDistanceLabel = new QLabel(QString("Focal Distance : %1").arg(QString::number(focalDistanceSlider->value() / 10.0, 'f', 2)));
+    globalLayout->addRow(focalDistanceLabel, focalDistanceSlider);
+    connect(focalDistanceSlider, &QSlider::valueChanged, this, [this, focalDistanceLabel](int value){
+        float v = value / 10.0f;
+        focalDistanceLabel->setText(QString("Focal Distance : %1").arg(QString::number(v, 'f', 2)));
+        m_glWindow->setFocalDistance(v);
+    });
+
+    connect(dofCheckbox, &QCheckBox::toggled, m_glWindow, &OpenGLWindow::setDoFEnabled);
 
     QPushButton *resetBtn = new QPushButton("Reset Scene");
     globalLayout->addRow(resetBtn);

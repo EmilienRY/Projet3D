@@ -17,6 +17,9 @@ OpenGLWindow::OpenGLWindow(QWindow *parent)
     : QOpenGLWindow(QOpenGLWindow::NoPartialUpdate, parent)
 {
     m_scene = new Scene();
+    m_lensRadius = 0.0f;
+    m_focalDistance = 5.0f;
+    m_enableDoF = false;
 }
 
 OpenGLWindow::~OpenGLWindow()
@@ -487,6 +490,9 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->setUniformValue("u_shadowSamples",  m_shadowSamples);
 
     m_computeProgram->setUniformValue("u_spp", m_spp);
+    m_computeProgram->setUniformValue("u_lensRadius", m_lensRadius);
+    m_computeProgram->setUniformValue("u_focalDistance", m_focalDistance);
+    m_computeProgram->setUniformValue("u_enableDoF", (int)m_enableDoF);
 
     glBindImageTexture(0, m_currentTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glBindImageTexture(4, m_gBufferTex, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
@@ -1557,6 +1563,33 @@ void OpenGLWindow::setDenoisePasses(int value)
 {
     if (m_denoisePasses != value) {
         m_denoisePasses = value;
+        update();
+    }
+}
+
+void OpenGLWindow::setLensRadius(float value)
+{
+    if (std::abs(m_lensRadius - value) > 1e-6f) {
+        m_lensRadius = value;
+        resetAccumulation();
+        update();
+    }
+}
+
+void OpenGLWindow::setFocalDistance(float value)
+{
+    if (std::abs(m_focalDistance - value) > 1e-6f) {
+        m_focalDistance = value;
+        resetAccumulation();
+        update();
+    }
+}
+
+void OpenGLWindow::setDoFEnabled(bool enabled)
+{
+    if (m_enableDoF != enabled) {
+        m_enableDoF = enabled;
+        resetAccumulation();
         update();
     }
 }

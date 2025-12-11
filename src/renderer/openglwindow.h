@@ -53,6 +53,10 @@ public:
     void setDenoiseStrength(int value);
     void setDenoisePasses(int value);
 
+    void setLensRadius(float value);
+    void setFocalDistance(float value);
+    void setDoFEnabled(bool enabled);
+
     Scene* scene() { return m_scene; }
     void setSelectedMesh(int index);
     void setSelectedLight(int index);
@@ -154,6 +158,10 @@ private:
     QVector3D m_lastCamPos;
     QVector3D m_lastCamFront;
     QVector3D m_lastCamUp;
+
+    float m_lensRadius = 0.0f;
+    float m_focalDistance = 5.0f;
+    bool m_enableDoF = false;
 
     int m_gpuSphereCount = 0;
     int m_gpuLightCount = 0;
