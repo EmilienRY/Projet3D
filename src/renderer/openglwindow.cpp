@@ -215,8 +215,11 @@ void OpenGLWindow::uploadSceneToGPU()
             if (!mesh->material().texturePath.isEmpty() && m_textureMap.contains(mesh->material().texturePath)) {
                 s.textureIdx = m_textureMap[mesh->material().texturePath];
             }
+            s.normalMapIdx = -1;
+            if (!mesh->material().normalMapPath.isEmpty() && m_textureMap.contains(mesh->material().normalMapPath)) {
+                s.normalMapIdx = m_textureMap[mesh->material().normalMapPath];
+            }
             s.emissionStrength = mesh->material().emissionStrength;
-            s.pad6 = 0;
 
             spheres.push_back(s);
         }
@@ -252,9 +255,12 @@ void OpenGLWindow::uploadSceneToGPU()
             if (!mesh->material().texturePath.isEmpty() && m_textureMap.contains(mesh->material().texturePath)) {
                 sq.textureIdx = m_textureMap[mesh->material().texturePath];
             }
+            sq.normalMapIdx = -1;
+            if (!mesh->material().normalMapPath.isEmpty() && m_textureMap.contains(mesh->material().normalMapPath)) {
+                sq.normalMapIdx = m_textureMap[mesh->material().normalMapPath];
+            }
 
             sq.emissionStrength = mesh->material().emissionStrength;
-            sq.pad6 = 0;
 
             squares.push_back(sq);
         }
@@ -286,12 +292,15 @@ void OpenGLWindow::uploadSceneToGPU()
         gm.ks = m.ks;
         gm.shininess = m.shininess;
         gm.emissionStrength = m.emissionStrength;
-        gm.pad2 = 0;
         gm.type = m.type;
         
         gm.textureIdx = -1;
         if (!m.texturePath.isEmpty() && m_textureMap.contains(m.texturePath)) {
             gm.textureIdx = m_textureMap[m.texturePath];
+        }
+        gm.normalMapIdx = -1;
+        if (!m.normalMapPath.isEmpty() && m_textureMap.contains(m.normalMapPath)) {
+            gm.normalMapIdx = m_textureMap[m.normalMapPath];
         }
 
         gm.emissionR = m.emissionColor.x();
@@ -399,16 +408,14 @@ void OpenGLWindow::initTexSSBO()
     m_textureHandles.clear();
     m_textureMap.clear();
 
-    for (Mesh* mesh : m_scene->meshes())
-    {
-        QString path = mesh->material().texturePath;
-        if (path.isEmpty()) continue;
-        if (m_textureMap.contains(path)) continue;
+    auto loadTexture = [&](const QString& path) {
+        if (path.isEmpty()) return;
+        if (m_textureMap.contains(path)) return;
 
         QImage img(path);
         if (img.isNull()) {
             qWarning() << "Failed to load texture:" << path;
-            continue;
+            return;
         }
         img = img.convertToFormat(QImage::Format_RGBA8888);
         img = img.mirrored();
@@ -424,12 +431,18 @@ void OpenGLWindow::initTexSSBO()
         const GLuint64 handle = glGetTextureHandleARB(texture);
         if (handle == 0) {
             qDebug() << "Error! Handle returned null";
-            continue;
+            return;
         }
         glMakeTextureHandleResidentARB(handle);
 
         m_textureHandles.push_back(handle);
         m_textureMap[path] = m_textureHandles.size() - 1;
+    };
+
+    for (Mesh* mesh : m_scene->meshes())
+    {
+        loadTexture(mesh->material().texturePath);
+        loadTexture(mesh->material().normalMapPath);
     }
 
     if (!m_textureHandles.empty()) {
@@ -1592,6 +1605,22 @@ void OpenGLWindow::setDoFEnabled(bool enabled)
         resetAccumulation();
         update();
     }
+}
+
+void OpenGLWindow::setNormalMap(QString path)
+{
+    makeCurrent();
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+    mesh->m_material.normalMapPath = path;
+
+    resetAccumulation();
+    update();
+    uploadSceneToGPU();
 }
 
 

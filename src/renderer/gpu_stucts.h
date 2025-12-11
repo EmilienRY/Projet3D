@@ -3,7 +3,7 @@
 struct GpuMaterial {
     float diffuseR, diffuseG, diffuseB, kd;
     float specularR, specularG, specularB, ks;
-    float shininess; float emissionStrength; float pad2; int type;
+    float shininess; float emissionStrength; int normalMapIdx; int type;
     int textureIdx; float emissionR; float emissionG; float emissionB;
 };
 
@@ -23,7 +23,7 @@ struct GpuSphere {
     float specularR, specularG, specularB, ks;
     float shininess; float emissionR; float emissionG; float emissionB;
     int Material_type;
-    int textureIdx; float emissionStrength; int pad6;
+    int textureIdx; float emissionStrength; int normalMapIdx;
 };
 
 struct GpuMesh {
@@ -46,7 +46,7 @@ struct GpuSquare {
     float diffuseR, diffuseG, diffuseB, kd;
     float specularR, specularG, specularB, ks;
     float shininess, emissionR, emissionG, emissionB;
-    int Material_type, textureIdx; float emissionStrength; int pad6;
+    int Material_type, textureIdx; float emissionStrength; int normalMapIdx;
 };
 
 

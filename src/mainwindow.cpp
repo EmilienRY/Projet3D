@@ -201,6 +201,28 @@ mainWindow::mainWindow(QWidget *parent)
         m_glWindow->setTexture("");
     });
 
+    QPushButton *btnNormalMap = new QPushButton("Choisir Normal Map");
+    matLayout->addRow("Normal Map :", btnNormalMap);
+
+    connect(btnNormalMap, &QPushButton::clicked, this, [this]() {
+        QFileDialog dialog(this);
+        dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+        dialog.setNameFilter("Images (*.png *.jpg *.bmp)");
+        dialog.setWindowTitle("Select Normal Map");
+
+        if (dialog.exec() == QDialog::Accepted) {
+            QString fileName = dialog.selectedFiles().first();
+            m_glWindow->setNormalMap(fileName);
+        }
+    });
+
+    QPushButton *btnRemoveNormalMap = new QPushButton("Supprimer Normal Map");
+    matLayout->addRow("", btnRemoveNormalMap);
+
+    connect(btnRemoveNormalMap, &QPushButton::clicked, this, [this]() {
+        m_glWindow->setNormalMap("");
+    });
+
 
     QPushButton *btnSpecularColor = new QPushButton("Changer Couleur reflets");
     matLayout->addRow("Couleur reflet :", btnSpecularColor);
@@ -263,7 +285,7 @@ mainWindow::mainWindow(QWidget *parent)
     });
 
     emissionStrengthSlider = new QSlider(Qt::Horizontal);
-    emissionStrengthSlider->setRange(0, 100);
+    emissionStrengthSlider->setRange(0, 1000);
     emissionStrengthLabel = new QLabel(QString("Emission Strength : %1").arg(QString::number(emissionStrengthSlider->value()/10.0, 'f', 1)));
     matLayout->addRow(emissionStrengthLabel, emissionStrengthSlider);
     connect(emissionStrengthSlider, &QSlider::valueChanged, this, [this](int value){
@@ -430,8 +452,8 @@ mainWindow::mainWindow(QWidget *parent)
 
     // Denoise Strength
     QSlider *denoiseStrengthSlider = new QSlider(Qt::Horizontal);
-    denoiseStrengthSlider->setRange(1, 20); // 0.1 to 2.0
-    denoiseStrengthSlider->setValue(5); // Default 0.5
+    denoiseStrengthSlider->setRange(1, 20);
+    denoiseStrengthSlider->setValue(5); 
     QLabel *denoiseStrengthLabel = new QLabel(QString("Denoise Strength : %1").arg(denoiseStrengthSlider->value()/10.0));
     globalLayout->addRow(denoiseStrengthLabel, denoiseStrengthSlider);
     connect(denoiseStrengthSlider, &QSlider::valueChanged, this, [denoiseStrengthLabel](int value){

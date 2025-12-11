@@ -20,6 +20,7 @@ struct BVHMaterial {
     float kd, ks;
     int type;
     QString texturePath;
+    QString normalMapPath;
     QVector3D emissionColor;
     float emissionStrength;
 };

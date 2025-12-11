@@ -24,6 +24,7 @@ void BVH::build(const std::vector<Mesh*>& meshes) {
         bvhMat.ks = mat.ks;
         bvhMat.type = mat.type;
         bvhMat.texturePath = mat.texturePath;
+        bvhMat.normalMapPath = mat.normalMapPath;
         bvhMat.emissionColor = mat.emissionColor;
         bvhMat.emissionStrength = mat.emissionStrength;
         

@@ -68,6 +68,7 @@ public:
 
     void changeColor(QColor color);
     void setTexture(QString path);
+    void setNormalMap(QString path);
     void changeColorSpec(QColor color);
     void changeColorLight(QColor color);
 

@@ -22,7 +22,7 @@ struct Sphere {
     vec3 diffuse;   float kd;
     vec3 specular;  float ks;
     float shininess; float emissionR, emissionG, emissionB;
-    int Material_type, textureIdx; float emissionStrength; int pad6;
+    int Material_type, textureIdx; float emissionStrength; int normalMapIdx;
 };
 
 struct Square {
@@ -34,7 +34,7 @@ struct Square {
     vec3 diffuse;   float kd;
     vec3 specular;  float ks;
     float shininess; float emissionR, emissionG, emissionB;
-    int Material_type, textureIdx; float emissionStrength; int pad6;
+    int Material_type, textureIdx; float emissionStrength; int normalMapIdx;
 };
 
 struct Mesh {
@@ -64,7 +64,7 @@ struct Vertex {
 struct Material {
     vec3 diffuse; float kd;
     vec3 specular; float ks;
-    float shininess; float emissionStrength; float pad2; int type;
+    float shininess; float emissionStrength; int normalMapIdx; int type;
     int textureIdx; float emissionR, emissionG, emissionB;
 };
 
@@ -188,6 +188,7 @@ struct Hit {
     vec3 pos;
     vec3 normal;
     vec2 uv;
+    vec3 tangent;
 
     vec3 diffuse;
     float kd;
@@ -198,6 +199,7 @@ struct Hit {
     float shininess;
     int Material_type;
     int textureIdx;
+    int normalMapIdx;
 
     vec3 emission;
     float emissionStrength;
@@ -224,7 +226,7 @@ bool intersectSphere(vec3 ro, vec3 rd, vec4 cR, out float t)
 }
 
 bool intersectQuad(vec3 ro, vec3 rd, Square sq,
-                   out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength)
+                   out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength, out vec3 tangentOut, out int normalMapIdx)
 {
     vec3 A = sq.a.xyz;
     vec3 B = sq.b.xyz;
@@ -254,6 +256,8 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
         texIdx = sq.textureIdx;
         emission = vec3(sq.emissionR, sq.emissionG, sq.emissionB);
         emissionStrength = sq.emissionStrength;
+        normalMapIdx = sq.normalMapIdx;
+        tangentOut = normalize(B - A);
 
         float areaABC = length(cross(B-A, C-A));
         float u = length(c2) / areaABC;
@@ -280,6 +284,8 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
         texIdx = sq.textureIdx;
         emission = vec3(sq.emissionR, sq.emissionG, sq.emissionB);
         emissionStrength = sq.emissionStrength;
+        normalMapIdx = sq.normalMapIdx;
+        tangentOut = normalize(B - A);
 
         float areaACD = length(cross(C-A, D-A));
         float u = length(c5) / areaACD;
@@ -298,7 +304,7 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
 // ---------
 
 bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
-                    out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength){
+                    out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength, out vec3 tangentOut, out int normalMapIdx){
 
     vec3 v0 = vertices[tri.v0].pos.xyz;
     vec3 v1 = vertices[tri.v1].pos.xyz;
@@ -336,6 +342,15 @@ bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
     vec2 uv2 = vertices[tri.v2].uv.xy;
     uvOut = (1.0 - u - v) * uv0 + u * uv1 + v * uv2;
 
+    vec2 deltaUV1 = uv1 - uv0;
+    vec2 deltaUV2 = uv2 - uv0;
+    float f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+    
+    tangentOut.x = f * (deltaUV2.y * e1.x - deltaUV1.y * e2.x);
+    tangentOut.y = f * (deltaUV2.y * e1.y - deltaUV1.y * e2.y);
+    tangentOut.z = f * (deltaUV2.y * e1.z - deltaUV1.y * e2.z);
+    tangentOut = normalize(tangentOut);
+
     Material mat = materials[tri.matIdx];
     diffuse = mat.diffuse;
     specular = mat.specular;
@@ -346,6 +361,7 @@ bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
     texIdx = mat.textureIdx;
     emission = vec3(mat.emissionR, mat.emissionG, mat.emissionB);
     emissionStrength = mat.emissionStrength;
+    normalMapIdx = mat.normalMapIdx;
 
     return true;
 }
@@ -479,6 +495,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
 {
     hit.t = 1e30;
     hit.textureIdx = -1;
+    hit.normalMapIdx = -1;
     hit.uv = vec2(0.0);
     bool found = false;
 
@@ -499,6 +516,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                 hit.shininess = spheres[i].shininess;
                 hit.Material_type = spheres[i].Material_type;
                 hit.textureIdx = spheres[i].textureIdx;
+                hit.normalMapIdx = spheres[i].normalMapIdx;
                 hit.emission = vec3(spheres[i].emissionR, spheres[i].emissionG, spheres[i].emissionB);
                 hit.emissionStrength = spheres[i].emissionStrength;
 
@@ -506,6 +524,9 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                 float u = 0.5 + atan(N.z, N.x) / (2.0 * 3.14159265);
                 float v = 0.5 + asin(N.y) / 3.14159265;
                 hit.uv = vec2(u, v);
+                
+                hit.tangent = normalize(vec3(-N.z, 0.0, N.x));
+                if (length(hit.tangent) < 0.001) hit.tangent = vec3(1,0,0);
 
                 found = true;
             }
@@ -521,8 +542,9 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
         vec3 specular;
         int matType; vec2 uv; int texIdx;
         vec3 emission; float emissionStrength;
+        vec3 tangent; int normalMapIdx;
 
-        if (intersectQuad(ro, rd, squares[i], t, n, diffuse,specular,kd,ks,shininess, matType, uv, texIdx, emission, emissionStrength))
+        if (intersectQuad(ro, rd, squares[i], t, n, diffuse,specular,kd,ks,shininess, matType, uv, texIdx, emission, emissionStrength, tangent, normalMapIdx))
         {
             if (t < hit.t) {
                 hit.t = t;
@@ -535,9 +557,11 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                 hit.shininess=shininess;
                 hit.Material_type = matType;
                 hit.textureIdx = texIdx;
+                hit.normalMapIdx = normalMapIdx;
                 hit.uv = uv;
                 hit.emission = emission;
                 hit.emissionStrength = emissionStrength;
+                hit.tangent = tangent;
                 found = true;
             }
         }
@@ -568,8 +592,9 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                     int matType;
                     vec2 uv; int texIdx;
                     vec3 emission; float emissionStrength;
+                    vec3 tangent; int normalMapIdx;
 
-                    if (intersectTri(ro, rd, triangles[triIdx], t, n, diffuse, specular, kd, ks, shininess, matType, uv, texIdx, emission, emissionStrength)) {
+                    if (intersectTri(ro, rd, triangles[triIdx], t, n, diffuse, specular, kd, ks, shininess, matType, uv, texIdx, emission, emissionStrength, tangent, normalMapIdx)) {
                         if (t < hit.t) {
                             hit.t = t;
                             hit.pos = ro + rd * t;
@@ -582,8 +607,10 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                             hit.Material_type = matType;
                             hit.uv = uv;
                             hit.textureIdx = texIdx;
+                            hit.normalMapIdx = normalMapIdx;
                             hit.emission = emission;
                             hit.emissionStrength = emissionStrength;
+                            hit.tangent = tangent;
                             found = true;
                         }
                     }
@@ -703,6 +730,20 @@ void main()
                     imageStore(imgGbuffer, px, vec4(0,0,0, 1000.0));
                 }
                 break;
+            }
+
+            // Normal Mapping
+            if (h.normalMapIdx >= 0) {
+                uint64_t handle = handles[h.normalMapIdx];
+                sampler2D s = sampler2D(handle);
+                vec3 mapN = texture(s, h.uv).rgb;
+                mapN = mapN * 2.0 - 1.0;
+                
+                vec3 T = normalize(h.tangent - h.normal * dot(h.normal, h.tangent));
+                vec3 B = cross(h.normal, T);
+                mat3 TBN = mat3(T, B, h.normal);
+                
+                h.normal = normalize(TBN * mapN);
             }
 
             // Emission
