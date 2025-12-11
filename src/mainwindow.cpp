@@ -26,28 +26,28 @@ mainWindow::mainWindow(QWidget *parent)
     QWidget *glWidget = QWidget::createWindowContainer(m_glWindow, this);
     setCentralWidget(glWidget);
 
-    QMenu *menuFile = menuBar()->addMenu("File");
-    QAction *loadOFF = new QAction("Load Mesh 3D (.off)", this);
-    QAction *loadOBJ = new QAction("Load Mesh 3D (.obj)", this);
+    QMenu *menuFile = menuBar()->addMenu("Fichier");
+    QAction *loadOFF = new QAction("Charger Mesh (.off)", this);
+    QAction *loadOBJ = new QAction("Charger Mesh (.obj)", this);
     menuFile->addAction(loadOFF);
     connect(loadOFF, &QAction::triggered, this, &mainWindow::openOffMesh);
     menuFile->addAction(loadOBJ);
     connect(loadOBJ, &QAction::triggered, this, &mainWindow::openObjMesh);
 
     QMenu *menuMesh = menuBar()->addMenu("Mesh");
-    QAction *addSphere = new QAction("Add Sphere", this);
-    QAction *addPlane = new QAction("Add Plane", this);
+    QAction *addSphere = new QAction("Ajouter une sphere", this);
+    QAction *addPlane = new QAction("Ajouter un plan", this);
     menuMesh->addAction(addSphere);
     connect(addSphere, &QAction::triggered, this, &mainWindow::addSphereInScene);
     menuMesh->addAction(addPlane);
     connect(addPlane, &QAction::triggered, this, &mainWindow::addPlaneInScene);
 
-    QMenu *menuLight = menuBar()->addMenu("Light");
-    QAction *addLight = new QAction("Add Light", this);
+    QMenu *menuLight = menuBar()->addMenu("Lumière");
+    QAction *addLight = new QAction("Ajouter une lumière", this);
     menuLight->addAction(addLight);
     connect(addLight, &QAction::triggered, this, &mainWindow::addLight);
 
-    QDockWidget *dock = new QDockWidget("Scene Controls", this);
+    QDockWidget *dock = new QDockWidget("Controle de la scène", this);
     dock->setAllowedAreas(Qt::RightDockWidgetArea);
     dock->setFixedWidth(450);
 
@@ -162,7 +162,7 @@ mainWindow::mainWindow(QWidget *parent)
     QFormLayout *matLayout = new QFormLayout();
 
 
-    QPushButton *btnColor = new QPushButton("Changer Couleur");
+    QPushButton *btnColor = new QPushButton("Changer la couleur");
     matLayout->addRow("Couleur :", btnColor);
 
     connect(btnColor, &QPushButton::clicked, this, [this]() {
@@ -179,14 +179,14 @@ mainWindow::mainWindow(QWidget *parent)
         dialog->open();
     });
 
-    QPushButton *btnTexture = new QPushButton("Choisir Texture");
+    QPushButton *btnTexture = new QPushButton("Choisir texture");
     matLayout->addRow("Texture :", btnTexture);
 
     connect(btnTexture, &QPushButton::clicked, this, [this]() {
         QFileDialog dialog(this);
         dialog.setOption(QFileDialog::DontUseNativeDialog, true);
-        dialog.setNameFilter("Images (*.png *.jpg *.bmp)");
-        dialog.setWindowTitle("Select Texture");
+        dialog.setNameFilter("Images (*.png *.jpg *.jpeg)");
+        dialog.setWindowTitle("Choisir une texture");
 
         if (dialog.exec() == QDialog::Accepted) {
             QString fileName = dialog.selectedFiles().first();
@@ -194,21 +194,21 @@ mainWindow::mainWindow(QWidget *parent)
         }
     });
 
-    QPushButton *btnRemoveTexture = new QPushButton("Supprimer Texture");
+    QPushButton *btnRemoveTexture = new QPushButton("Supprimer texture");
     matLayout->addRow("", btnRemoveTexture);
 
     connect(btnRemoveTexture, &QPushButton::clicked, this, [this]() {
         m_glWindow->setTexture("");
     });
 
-    QPushButton *btnNormalMap = new QPushButton("Choisir Normal Map");
-    matLayout->addRow("Normal Map :", btnNormalMap);
+    QPushButton *btnNormalMap = new QPushButton("Choisir normal map");
+    matLayout->addRow("Normal map :", btnNormalMap);
 
     connect(btnNormalMap, &QPushButton::clicked, this, [this]() {
         QFileDialog dialog(this);
         dialog.setOption(QFileDialog::DontUseNativeDialog, true);
-        dialog.setNameFilter("Images (*.png *.jpg *.bmp)");
-        dialog.setWindowTitle("Select Normal Map");
+        dialog.setNameFilter("Images (*.png *.jpg *.jpeg)");
+        dialog.setWindowTitle("Choisir une normal map");
 
         if (dialog.exec() == QDialog::Accepted) {
             QString fileName = dialog.selectedFiles().first();
@@ -216,7 +216,7 @@ mainWindow::mainWindow(QWidget *parent)
         }
     });
 
-    QPushButton *btnRemoveNormalMap = new QPushButton("Supprimer Normal Map");
+    QPushButton *btnRemoveNormalMap = new QPushButton("Supprimer normal map");
     matLayout->addRow("", btnRemoveNormalMap);
 
     connect(btnRemoveNormalMap, &QPushButton::clicked, this, [this]() {
@@ -224,7 +224,7 @@ mainWindow::mainWindow(QWidget *parent)
     });
 
 
-    QPushButton *btnSpecularColor = new QPushButton("Changer Couleur reflets");
+    QPushButton *btnSpecularColor = new QPushButton("Changer couleur reflets");
     matLayout->addRow("Couleur reflet :", btnSpecularColor);
 
     connect(btnSpecularColor, &QPushButton::clicked, this, [this]() {
@@ -248,42 +248,40 @@ mainWindow::mainWindow(QWidget *parent)
     ksSlider->setRange(0, 100);
     kdSlider->setRange(0, 100);
 
-    ksLabel = new QLabel(QString("ks : %1").arg(QString::number(ksSlider->value()/100.0, 'f', 2)));
+    ksLabel = new QLabel(QString("Spéculaire (ks): %1").arg(QString::number(ksSlider->value()/100.0, 'f', 2)));
     matLayout->addRow(ksLabel, ksSlider);
     connect(ksSlider, &QSlider::valueChanged, this, [this](int value){
-        ksLabel->setText(QString("ks : %1").arg(QString::number(value/100.0, 'f', 2)));
+        ksLabel->setText(QString("Spéculaire (ks): %1").arg(QString::number(value/100.0, 'f', 2)));
     });
 
-    kdLabel = new QLabel(QString("kd : %1").arg(QString::number(kdSlider->value()/100.0, 'f', 2)));
+    kdLabel = new QLabel(QString("Diffuse (kd): %1").arg(QString::number(kdSlider->value()/100.0, 'f', 2)));
     matLayout->addRow(kdLabel, kdSlider);
     connect(kdSlider, &QSlider::valueChanged, this, [this](int value){
-        kdLabel->setText(QString("kd : %1").arg(QString::number(value/100.0, 'f', 2)));
+        kdLabel->setText(QString("Diffuse (kd): %1").arg(QString::number(value/100.0, 'f', 2)));
     });
 
     shininessSlider = new QSlider(Qt::Horizontal);
     shininessSlider->setRange(1, 200);
-    shininessLabel = new QLabel(QString("Shininess : %1").arg(shininessSlider->value()));
+    shininessLabel = new QLabel(QString("Brillance : %1").arg(shininessSlider->value()));
     matLayout->addRow(shininessLabel, shininessSlider);
     connect(shininessSlider, &QSlider::valueChanged, this, [this](int value){
-        shininessLabel->setText(QString("Shininess : %1").arg(value));
+        shininessLabel->setText(QString("Brillance : %1").arg(value));
     });
-
-    // indice refraction verre
 
     iorSlider = new QSlider(Qt::Horizontal);
     iorSlider->setRange(100, 300);
     iorSlider->setValue(150);
-    iorLabel = new QLabel(QString("IOR : %1").arg(QString::number(iorSlider->value()/100.0, 'f', 2)));
+    iorLabel = new QLabel(QString("Indice réfraction (verre) : %1").arg(QString::number(iorSlider->value()/100.0, 'f', 2)));
     matLayout->addRow(iorLabel, iorSlider);
     connect(iorSlider, &QSlider::valueChanged, this, [this](int value){
-        iorLabel->setText(QString("IOR : %1").arg(QString::number(value/100.0, 'f', 2)));
+        iorLabel->setText(QString("Indice réfraction (verre) : %1").arg(QString::number(value/100.0, 'f', 2)));
     });
     connect(iorSlider, &QSlider::valueChanged, this, [this](int value){
         m_glWindow->setIor(value/100.0f);
     });
 
-    QPushButton *btnEmissionColor = new QPushButton("Changer Couleur Emission");
-    matLayout->addRow("Couleur Emission :", btnEmissionColor);
+    QPushButton *btnEmissionColor = new QPushButton("Changer couleur émission");
+    matLayout->addRow("Couleur émission :", btnEmissionColor);
 
     connect(btnEmissionColor, &QPushButton::clicked, this, [this]() {
         QColorDialog *dialog = new QColorDialog(this);
@@ -300,17 +298,17 @@ mainWindow::mainWindow(QWidget *parent)
 
     emissionStrengthSlider = new QSlider(Qt::Horizontal);
     emissionStrengthSlider->setRange(0, 1000);
-    emissionStrengthLabel = new QLabel(QString("Emission Strength : %1").arg(QString::number(emissionStrengthSlider->value()/10.0, 'f', 1)));
+    emissionStrengthLabel = new QLabel(QString("Intensité émission : %1").arg(QString::number(emissionStrengthSlider->value()/10.0, 'f', 1)));
     matLayout->addRow(emissionStrengthLabel, emissionStrengthSlider);
     connect(emissionStrengthSlider, &QSlider::valueChanged, this, [this](int value){
-        emissionStrengthLabel->setText(QString("Emission Strength : %1").arg(QString::number(value/10.0, 'f', 1)));
+        emissionStrengthLabel->setText(QString("Intensité émission : %1").arg(QString::number(value/10.0, 'f', 1)));
         m_glWindow->setEmissionStrength(value);
     });
 
     typeMat = new QComboBox(this);
     matLayout->addRow("Type de matériel :", typeMat);
 
-    typeMat->addItem("Mate");
+    typeMat->addItem("Diffus");
     typeMat->addItem("Mirroir");
     typeMat->addItem("Verre");
 
@@ -325,7 +323,7 @@ mainWindow::mainWindow(QWidget *parent)
     QFormLayout *lightLayout = new QFormLayout();
 
     lightSelector = new QComboBox();
-    lightLayout->addRow("Light sélectionné :", lightSelector);
+    lightLayout->addRow("Lumière sélectionnée :", lightSelector);
 
 
     connect(m_glWindow, &OpenGLWindow::sceneReady, this, [this]() {
@@ -359,25 +357,25 @@ mainWindow::mainWindow(QWidget *parent)
     yLightSlider->setRange(-100, 100);
     zLightSlider->setRange(-100, 100);
 
-    lightXLabel = new QLabel(QString("Light Translation X : %1").arg(QString::number(xLightSlider->value()/10.0, 'f', 1)));
+    lightXLabel = new QLabel(QString("Lumière translation X : %1").arg(QString::number(xLightSlider->value()/10.0, 'f', 1)));
     lightLayout->addRow(lightXLabel, xLightSlider);
     connect(xLightSlider, &QSlider::valueChanged, this, [this](int value){
-        lightXLabel->setText(QString("Light Translation X : %1").arg(QString::number(value/10.0, 'f', 1)));
+        lightXLabel->setText(QString("Lumière translation X : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
-    lightYLabel = new QLabel(QString("Light Translation Y : %1").arg(QString::number(yLightSlider->value()/10.0, 'f', 1)));
+    lightYLabel = new QLabel(QString("Lumière translation Y : %1").arg(QString::number(yLightSlider->value()/10.0, 'f', 1)));
     lightLayout->addRow(lightYLabel, yLightSlider);
     connect(yLightSlider, &QSlider::valueChanged, this, [this](int value){
-        lightYLabel->setText(QString("Light Translation Y : %1").arg(QString::number(value/10.0, 'f', 1)));
+        lightYLabel->setText(QString("Lumière translation Y : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
-    lightZLabel = new QLabel(QString("Light Translation Z : %1").arg(QString::number(zLightSlider->value()/10.0, 'f', 1)));
+    lightZLabel = new QLabel(QString("Lumière translation Z : %1").arg(QString::number(zLightSlider->value()/10.0, 'f', 1)));
     lightLayout->addRow(lightZLabel, zLightSlider);
     connect(zLightSlider, &QSlider::valueChanged, this, [this](int value){
-        lightZLabel->setText(QString("Light Translation Z : %1").arg(QString::number(value/10.0, 'f', 1)));
+        lightZLabel->setText(QString("Lumière translation Z : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
-    QPushButton *btnLightColor = new QPushButton("Changer Couleur Lumière");
+    QPushButton *btnLightColor = new QPushButton("Changer couleur lumière");
     lightLayout->addRow("Couleur de la lumière :", btnLightColor);
 
     connect(btnLightColor, &QPushButton::clicked, this, [this]() {
@@ -407,10 +405,10 @@ mainWindow::mainWindow(QWidget *parent)
         intensityLabel->setText(QString("Intensitée : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
-    radiusLabel = new QLabel(QString("Rayon Lumière : %1").arg(QString::number(lighRadiusSlider->value()/10.0, 'f', 1)));
+    radiusLabel = new QLabel(QString("Rayon lumière : %1").arg(QString::number(lighRadiusSlider->value()/10.0, 'f', 1)));
     lightLayout->addRow(radiusLabel, lighRadiusSlider);
     connect(lighRadiusSlider, &QSlider::valueChanged, this, [this](int value){
-        radiusLabel->setText(QString("Rayon Lumière : %1").arg(QString::number(value/10.0, 'f', 1)));
+        radiusLabel->setText(QString("Rayon lumière : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
     lightGroup->setLayout(lightLayout);
@@ -428,10 +426,10 @@ mainWindow::mainWindow(QWidget *parent)
     QSlider *maxBouncesSlider = new QSlider(Qt::Horizontal);
     maxBouncesSlider->setRange(0, 20);
     maxBouncesSlider->setValue(4);
-    QLabel *maxBouncesLabel = new QLabel(QString("Max Bounces : %1").arg(maxBouncesSlider->value()));
+    QLabel *maxBouncesLabel = new QLabel(QString("Rebonds max : %1").arg(maxBouncesSlider->value()));
     globalLayout->addRow(maxBouncesLabel, maxBouncesSlider);
     connect(maxBouncesSlider, &QSlider::valueChanged, this, [maxBouncesLabel](int value){
-        maxBouncesLabel->setText(QString("Max Bounces : %1").arg(value));
+        maxBouncesLabel->setText(QString("Rebonds max : %1").arg(value));
     });
     connect(maxBouncesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setMaxBounces);
 
@@ -439,10 +437,10 @@ mainWindow::mainWindow(QWidget *parent)
     QSlider *shadowSamplesSlider = new QSlider(Qt::Horizontal);
     shadowSamplesSlider->setRange(1, 32);
     shadowSamplesSlider->setValue(1);
-    QLabel *shadowSamplesLabel = new QLabel(QString("Shadow Rays : %1").arg(shadowSamplesSlider->value()));
+    QLabel *shadowSamplesLabel = new QLabel(QString("Rayons d'ombres : %1").arg(shadowSamplesSlider->value()));
     globalLayout->addRow(shadowSamplesLabel, shadowSamplesSlider);
     connect(shadowSamplesSlider, &QSlider::valueChanged, this, [shadowSamplesLabel](int value){
-        shadowSamplesLabel->setText(QString("Shadow Rays : %1").arg(value));
+        shadowSamplesLabel->setText(QString("Rayons d'ombres : %1").arg(value));
     });
     connect(shadowSamplesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setShadowSamples);
 
@@ -450,28 +448,28 @@ mainWindow::mainWindow(QWidget *parent)
     QSlider *sppSlider = new QSlider(Qt::Horizontal);
     sppSlider->setRange(1, 16);
     sppSlider->setValue(1);
-    QLabel *sppLabel = new QLabel(QString("Rays/Pixel : %1").arg(sppSlider->value()));
+    QLabel *sppLabel = new QLabel(QString("Rayons par pixels : %1").arg(sppSlider->value()));
     globalLayout->addRow(sppLabel, sppSlider);
     connect(sppSlider, &QSlider::valueChanged, this, [sppLabel](int value){
-        sppLabel->setText(QString("Rays/Pixel : %1").arg(value));
+        sppLabel->setText(QString("Rayons par pixels : %1").arg(value));
     });
     connect(sppSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setSpp);
 
     // Denoise Mode
     QComboBox *denoiseModeCombo = new QComboBox();
-    denoiseModeCombo->addItem("Accumulation + Denoise");
-    denoiseModeCombo->addItem("Accumulation Only");
-    globalLayout->addRow("Denoise Mode :", denoiseModeCombo);
+    denoiseModeCombo->addItem("Accumulation + Débruitage");
+    denoiseModeCombo->addItem("Accumulation");
+    globalLayout->addRow("Mode de débruitage :", denoiseModeCombo);
     connect(denoiseModeCombo, &QComboBox::currentIndexChanged, m_glWindow, &OpenGLWindow::setDenoiseMode);
 
     // Denoise Strength
     QSlider *denoiseStrengthSlider = new QSlider(Qt::Horizontal);
     denoiseStrengthSlider->setRange(1, 20);
     denoiseStrengthSlider->setValue(5); 
-    QLabel *denoiseStrengthLabel = new QLabel(QString("Denoise Strength : %1").arg(denoiseStrengthSlider->value()/10.0));
+    QLabel *denoiseStrengthLabel = new QLabel(QString("Intensité du débruitage : %1").arg(denoiseStrengthSlider->value()/10.0));
     globalLayout->addRow(denoiseStrengthLabel, denoiseStrengthSlider);
     connect(denoiseStrengthSlider, &QSlider::valueChanged, this, [denoiseStrengthLabel](int value){
-        denoiseStrengthLabel->setText(QString("Denoise Strength : %1").arg(value/10.0));
+        denoiseStrengthLabel->setText(QString("Intensité du débruitage : %1").arg(value/10.0));
     });
     connect(denoiseStrengthSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setDenoiseStrength);
 
@@ -479,15 +477,15 @@ mainWindow::mainWindow(QWidget *parent)
     QSlider *denoisePassesSlider = new QSlider(Qt::Horizontal);
     denoisePassesSlider->setRange(1, 5);
     denoisePassesSlider->setValue(3);
-    QLabel *denoisePassesLabel = new QLabel(QString("Denoise Passes : %1").arg(denoisePassesSlider->value()));
+    QLabel *denoisePassesLabel = new QLabel(QString("Passes de débruitage : %1").arg(denoisePassesSlider->value()));
     globalLayout->addRow(denoisePassesLabel, denoisePassesSlider);
     connect(denoisePassesSlider, &QSlider::valueChanged, this, [denoisePassesLabel](int value){
-        denoisePassesLabel->setText(QString("Denoise Passes : %1").arg(value));
+        denoisePassesLabel->setText(QString("Passes de débruitage : %1").arg(value));
     });
     connect(denoisePassesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setDenoisePasses);
 
     // Background Color
-    QPushButton *btnBgColor = new QPushButton("Changer Couleur Fond");
+    QPushButton *btnBgColor = new QPushButton("Changer couleur fond");
     globalLayout->addRow("Couleur de fond :", btnBgColor);
 
     connect(btnBgColor, &QPushButton::clicked, this, [this]() {
@@ -507,42 +505,42 @@ mainWindow::mainWindow(QWidget *parent)
     QSlider *exposureSlider = new QSlider(Qt::Horizontal);
     exposureSlider->setRange(1, 100); 
     exposureSlider->setValue(10); 
-    QLabel *exposureLabel = new QLabel(QString("Exposure : %1").arg(QString::number(exposureSlider->value()/10.0, 'f', 1)));
+    QLabel *exposureLabel = new QLabel(QString("Exposition : %1").arg(QString::number(exposureSlider->value()/10.0, 'f', 1)));
     globalLayout->addRow(exposureLabel, exposureSlider);
     connect(exposureSlider, &QSlider::valueChanged, this, [this, exposureLabel](int value){
-        exposureLabel->setText(QString("Exposure : %1").arg(QString::number(value/10.0, 'f', 1)));
+        exposureLabel->setText(QString("Exposition : %1").arg(QString::number(value/10.0, 'f', 1)));
         m_glWindow->setExposure(value/10.0f);
     });
 
-    QCheckBox *dofCheckbox = new QCheckBox("Enable Depth of Field");
+    QCheckBox *dofCheckbox = new QCheckBox("Activer profondeur de champs");
     dofCheckbox->setChecked(false);
     globalLayout->addRow(dofCheckbox);
 
     QSlider *lensRadiusSlider = new QSlider(Qt::Horizontal);
     lensRadiusSlider->setRange(0, 100);
     lensRadiusSlider->setValue(0);
-    QLabel *lensRadiusLabel = new QLabel(QString("Aperture (lens radius) : %1").arg(QString::number(lensRadiusSlider->value() / 1000.0, 'f', 3)));
+    QLabel *lensRadiusLabel = new QLabel(QString("Ouverture : %1").arg(QString::number(lensRadiusSlider->value() / 1000.0, 'f', 3)));
     globalLayout->addRow(lensRadiusLabel, lensRadiusSlider);
     connect(lensRadiusSlider, &QSlider::valueChanged, this, [this, lensRadiusLabel](int value){
         float v = value / 1000.0f;
-        lensRadiusLabel->setText(QString("Aperture (lens radius) : %1").arg(QString::number(v, 'f', 3)));
+        lensRadiusLabel->setText(QString("Ouverture : %1").arg(QString::number(v, 'f', 3)));
         m_glWindow->setLensRadius(v);
     });
 
     QSlider *focalDistanceSlider = new QSlider(Qt::Horizontal);
     focalDistanceSlider->setRange(1, 200); 
     focalDistanceSlider->setValue(50); 
-    QLabel *focalDistanceLabel = new QLabel(QString("Focal Distance : %1").arg(QString::number(focalDistanceSlider->value() / 10.0, 'f', 2)));
+    QLabel *focalDistanceLabel = new QLabel(QString("Distance focal : %1").arg(QString::number(focalDistanceSlider->value() / 10.0, 'f', 2)));
     globalLayout->addRow(focalDistanceLabel, focalDistanceSlider);
     connect(focalDistanceSlider, &QSlider::valueChanged, this, [this, focalDistanceLabel](int value){
         float v = value / 10.0f;
-        focalDistanceLabel->setText(QString("Focal Distance : %1").arg(QString::number(v, 'f', 2)));
+        focalDistanceLabel->setText(QString("Distance focal : %1").arg(QString::number(v, 'f', 2)));
         m_glWindow->setFocalDistance(v);
     });
 
     connect(dofCheckbox, &QCheckBox::toggled, m_glWindow, &OpenGLWindow::setDoFEnabled);
 
-    QPushButton *resetBtn = new QPushButton("Reset Scene");
+    QPushButton *resetBtn = new QPushButton("Reset scene");
     globalLayout->addRow(resetBtn);
 
     globalGroup->setLayout(globalLayout);
@@ -582,8 +580,8 @@ void mainWindow::openOffMesh()
 {
     QFileDialog dialog(this);
     dialog.setOption(QFileDialog::DontUseNativeDialog, true);
-    dialog.setNameFilter("OFF Files (*.off)");
-    dialog.setWindowTitle("Select 3D mesh");
+    dialog.setNameFilter("Fichiers OFF (*.off)");
+    dialog.setWindowTitle("Choisir un mesh");
 
     if (dialog.exec() != QDialog::Accepted)
         return;
@@ -614,8 +612,8 @@ void mainWindow::openObjMesh()
 {
     QFileDialog dialog(this);
     dialog.setOption(QFileDialog::DontUseNativeDialog, true);
-    dialog.setNameFilter("OBJ Files (*.obj)");
-    dialog.setWindowTitle("Select 3D mesh");
+    dialog.setNameFilter("Fichiers OBJ (*.obj)");
+    dialog.setWindowTitle("Choisir un mesh");
 
     if (dialog.exec() != QDialog::Accepted)
         return;
@@ -739,17 +737,17 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     kdSlider->setValue(mat.kd *100);
     ksSlider->setValue(mat.ks *100);
 
-    kdLabel->setText(QString::asprintf("kd : %5.2f", mat.kd));
-    ksLabel->setText(QString::asprintf("ks : %5.2f", mat.ks));
+    kdLabel->setText(QString::asprintf("Diffuse (kd): %5.2f", mat.kd));
+    ksLabel->setText(QString::asprintf("Spéculaire (ks): %5.2f", mat.ks));
 
     shininessSlider->setValue(mat.shininess);
-    shininessLabel->setText(QString("Shininess : %1").arg(mat.shininess));
+    shininessLabel->setText(QString("Brillance : %1").arg(mat.shininess));
 
     emissionStrengthSlider->setValue(mat.emissionStrength * 10.0);
-    emissionStrengthLabel->setText(QString::asprintf("Emission Strength : %5.1f", mat.emissionStrength));
+    emissionStrengthLabel->setText(QString::asprintf("Intensité émission : %5.1f", mat.emissionStrength));
     
     iorSlider->setValue(mat.ior * 100);
-    iorLabel->setText(QString("IOR : %1").arg(QString::number(mat.ior, 'f', 2)));
+    iorLabel->setText(QString("Indice réfraction (verre) : %1").arg(QString::number(mat.ior, 'f', 2)));
 
     typeMat->setCurrentIndex(mat.type);
 }
@@ -766,15 +764,15 @@ void mainWindow::onLighthSelected(int index, QVector3D pos, float intensity, flo
     yLightSlider->setValue(pos.y() * 10);
     zLightSlider->setValue(pos.z() * 10);
 
-    lightXLabel->setText(QString::asprintf("Light Translation X : %5.1f", pos.x()));
-    lightYLabel->setText(QString::asprintf("Light Translation Y : %5.1f", pos.y()));
-    lightZLabel->setText(QString::asprintf("Light Translation Z : %5.1f", pos.z()));
+    lightXLabel->setText(QString::asprintf("Lumière Translation X : %5.1f", pos.x()));
+    lightYLabel->setText(QString::asprintf("Lumière Translation Y : %5.1f", pos.y()));
+    lightZLabel->setText(QString::asprintf("Lumière Translation Z : %5.1f", pos.z()));
 
     lightIntensitySlider->setValue(intensity * 10);
     lighRadiusSlider->setValue(radius *10);
 
     intensityLabel->setText(QString::asprintf("Intensitée : %5.1f", intensity));
-    radiusLabel->setText(QString::asprintf("Rayon Lumière : %5.1f", radius));
+    radiusLabel->setText(QString::asprintf("Rayon lumière : %5.1f", radius));
 }
 
 void mainWindow::updateFps(float fps)
