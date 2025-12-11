@@ -21,9 +21,8 @@ struct Sphere {
 
     vec3 diffuse;   float kd;
     vec3 specular;  float ks;
-    float shininess;
-    float pad1, pad2, pad3;
-    int Material_type, textureIdx, pad5, pad6;
+    float shininess; float emissionR, emissionG, emissionB;
+    int Material_type, textureIdx; float emissionStrength; int pad6;
 };
 
 struct Square {
@@ -34,9 +33,8 @@ struct Square {
 
     vec3 diffuse;   float kd;
     vec3 specular;  float ks;
-    float shininess;
-    float pad1, pad2, pad3;
-    int Material_type, textureIdx, pad5, pad6;
+    float shininess; float emissionR, emissionG, emissionB;
+    int Material_type, textureIdx; float emissionStrength; int pad6;
 };
 
 struct Mesh {
@@ -66,8 +64,8 @@ struct Vertex {
 struct Material {
     vec3 diffuse; float kd;
     vec3 specular; float ks;
-    float shininess; float pad1, pad2;
-    int type; int textureIdx; int pad5, pad6;
+    float shininess; float emissionStrength; float pad2; int type;
+    int textureIdx; float emissionR, emissionG, emissionB;
 };
 
 struct Light {
@@ -181,6 +179,9 @@ struct Hit {
     float shininess;
     int Material_type;
     int textureIdx;
+
+    vec3 emission;
+    float emissionStrength;
 };
 
 // ---------------
@@ -204,7 +205,7 @@ bool intersectSphere(vec3 ro, vec3 rd, vec4 cR, out float t)
 }
 
 bool intersectQuad(vec3 ro, vec3 rd, Square sq,
-                   out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx)
+                   out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength)
 {
     vec3 A = sq.a.xyz;
     vec3 B = sq.b.xyz;
@@ -232,6 +233,8 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
         shininess=sq.shininess;
         matType = sq.Material_type;
         texIdx = sq.textureIdx;
+        emission = vec3(sq.emissionR, sq.emissionG, sq.emissionB);
+        emissionStrength = sq.emissionStrength;
 
         float areaABC = length(cross(B-A, C-A));
         float u = length(c2) / areaABC;
@@ -256,6 +259,8 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
         shininess=sq.shininess;
         matType = sq.Material_type;
         texIdx = sq.textureIdx;
+        emission = vec3(sq.emissionR, sq.emissionG, sq.emissionB);
+        emissionStrength = sq.emissionStrength;
 
         float areaACD = length(cross(C-A, D-A));
         float u = length(c5) / areaACD;
@@ -274,7 +279,7 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
 // ---------
 
 bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
-                    out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx){
+                    out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength){
 
     vec3 v0 = vertices[tri.v0].pos.xyz;
     vec3 v1 = vertices[tri.v1].pos.xyz;
@@ -320,6 +325,8 @@ bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
     shininess = mat.shininess;
     matType = mat.type;
     texIdx = mat.textureIdx;
+    emission = vec3(mat.emissionR, mat.emissionG, mat.emissionB);
+    emissionStrength = mat.emissionStrength;
 
     return true;
 }
@@ -473,6 +480,8 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                 hit.shininess = spheres[i].shininess;
                 hit.Material_type = spheres[i].Material_type;
                 hit.textureIdx = spheres[i].textureIdx;
+                hit.emission = vec3(spheres[i].emissionR, spheres[i].emissionG, spheres[i].emissionB);
+                hit.emissionStrength = spheres[i].emissionStrength;
 
                 vec3 N = hit.normal;
                 float u = 0.5 + atan(N.z, N.x) / (2.0 * 3.14159265);
@@ -492,8 +501,9 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
         float kd; float ks; float shininess;
         vec3 specular;
         int matType; vec2 uv; int texIdx;
+        vec3 emission; float emissionStrength;
 
-        if (intersectQuad(ro, rd, squares[i], t, n, diffuse,specular,kd,ks,shininess, matType, uv, texIdx))
+        if (intersectQuad(ro, rd, squares[i], t, n, diffuse,specular,kd,ks,shininess, matType, uv, texIdx, emission, emissionStrength))
         {
             if (t < hit.t) {
                 hit.t = t;
@@ -507,6 +517,8 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                 hit.Material_type = matType;
                 hit.textureIdx = texIdx;
                 hit.uv = uv;
+                hit.emission = emission;
+                hit.emissionStrength = emissionStrength;
                 found = true;
             }
         }
@@ -536,8 +548,9 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                     vec3 specular;
                     int matType;
                     vec2 uv; int texIdx;
+                    vec3 emission; float emissionStrength;
 
-                    if (intersectTri(ro, rd, triangles[triIdx], t, n, diffuse, specular, kd, ks, shininess, matType, uv, texIdx)) {
+                    if (intersectTri(ro, rd, triangles[triIdx], t, n, diffuse, specular, kd, ks, shininess, matType, uv, texIdx, emission, emissionStrength)) {
                         if (t < hit.t) {
                             hit.t = t;
                             hit.pos = ro + rd * t;
@@ -550,6 +563,8 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                             hit.Material_type = matType;
                             hit.uv = uv;
                             hit.textureIdx = texIdx;
+                            hit.emission = emission;
+                            hit.emissionStrength = emissionStrength;
                             found = true;
                         }
                     }
@@ -656,6 +671,9 @@ void main()
                 }
                 break;
             }
+
+            // Emission
+            radiance += throughput * h.emission * h.emissionStrength;
 
             if (bounce == 0) {
                 imageStore(imgGbuffer, px, vec4(h.normal, h.t));

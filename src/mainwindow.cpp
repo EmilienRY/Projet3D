@@ -245,6 +245,31 @@ mainWindow::mainWindow(QWidget *parent)
         shininessLabel->setText(QString("Shininess : %1").arg(value));
     });
 
+    QPushButton *btnEmissionColor = new QPushButton("Changer Couleur Emission");
+    matLayout->addRow("Couleur Emission :", btnEmissionColor);
+
+    connect(btnEmissionColor, &QPushButton::clicked, this, [this]() {
+        QColorDialog *dialog = new QColorDialog(this);
+        dialog->setOption(QColorDialog::DontUseNativeDialog, true);
+        dialog->setWindowTitle("Choisir une couleur d'émission");
+
+        connect(dialog, &QColorDialog::colorSelected,
+                this, [this](const QColor &c) {
+                    m_glWindow->setEmissionColor(c);
+                });
+
+        dialog->open();
+    });
+
+    emissionStrengthSlider = new QSlider(Qt::Horizontal);
+    emissionStrengthSlider->setRange(0, 100);
+    emissionStrengthLabel = new QLabel(QString("Emission Strength : %1").arg(QString::number(emissionStrengthSlider->value()/10.0, 'f', 1)));
+    matLayout->addRow(emissionStrengthLabel, emissionStrengthSlider);
+    connect(emissionStrengthSlider, &QSlider::valueChanged, this, [this](int value){
+        emissionStrengthLabel->setText(QString("Emission Strength : %1").arg(QString::number(value/10.0, 'f', 1)));
+        m_glWindow->setEmissionStrength(value);
+    });
+
     typeMat = new QComboBox(this);
     matLayout->addRow("Type de matériel :", typeMat);
 
@@ -596,6 +621,7 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     QSignalBlocker b9(kdSlider);
     QSignalBlocker b10(ksSlider);
     QSignalBlocker b11(shininessSlider);
+    QSignalBlocker b12(emissionStrengthSlider);
 
     xSlider->setValue(pos.x() * 10);
     ySlider->setValue(pos.y() * 10);
@@ -624,6 +650,9 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
 
     shininessSlider->setValue(mat.shininess);
     shininessLabel->setText(QString("Shininess : %1").arg(mat.shininess));
+
+    emissionStrengthSlider->setValue(mat.emissionStrength * 10.0);
+    emissionStrengthLabel->setText(QString::asprintf("Emission Strength : %5.1f", mat.emissionStrength));
     
     typeMat->setCurrentIndex(mat.type);
 }

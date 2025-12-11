@@ -44,6 +44,7 @@ private:
     QSlider *ksSlider;
     QSlider *kdSlider;
     QSlider *shininessSlider;
+    QSlider *emissionStrengthSlider;
 
     QSlider *scaleSlider;
 
@@ -66,6 +67,7 @@ private:
     QLabel *ksLabel;
     QLabel *kdLabel;
     QLabel *shininessLabel;
+    QLabel *emissionStrengthLabel;
     QLabel *lightXLabel;
     QLabel *lightYLabel;
     QLabel *lightZLabel;

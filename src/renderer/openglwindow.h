@@ -39,6 +39,8 @@ public:
     void setKs(int value);
     void setKd(int value);
     void setShininess(int value);
+    void setEmissionColor(const QColor &color);
+    void setEmissionStrength(int value);
     void setLightX(int value);
     void setLightY(int value);
     void setLightZ(int value);

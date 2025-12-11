@@ -203,17 +203,17 @@ void OpenGLWindow::uploadSceneToGPU()
             s.specularB = mesh->material().specularColor.z();
             s.shininess=mesh->material().shininess;
 
-            s.pad1=0.0f;
-            s.pad2=0.0f;
-            s.pad3=0.0f;
-            s.pad5=0;
-            s.pad6=0;
+            s.emissionR = mesh->material().emissionColor.x();
+            s.emissionG = mesh->material().emissionColor.y();
+            s.emissionB = mesh->material().emissionColor.z();
             s.Material_type=mesh->material().type;
             
             s.textureIdx = -1;
             if (!mesh->material().texturePath.isEmpty() && m_textureMap.contains(mesh->material().texturePath)) {
                 s.textureIdx = m_textureMap[mesh->material().texturePath];
             }
+            s.emissionStrength = mesh->material().emissionStrength;
+            s.pad6 = 0;
 
             spheres.push_back(s);
         }
@@ -240,6 +240,9 @@ void OpenGLWindow::uploadSceneToGPU()
             sq.specularG = mesh->material().specularColor.y();
             sq.specularB = mesh->material().specularColor.z();
             sq.shininess=mesh->material().shininess;
+            sq.emissionR = mesh->material().emissionColor.x();
+            sq.emissionG = mesh->material().emissionColor.y();
+            sq.emissionB = mesh->material().emissionColor.z();
             sq.Material_type=mesh->material().type;
 
             sq.textureIdx = -1;
@@ -247,11 +250,8 @@ void OpenGLWindow::uploadSceneToGPU()
                 sq.textureIdx = m_textureMap[mesh->material().texturePath];
             }
 
-            sq.pad1=0.0f;
-            sq.pad2=0.0f;
-            sq.pad3=0.0f;
-            sq.pad5=0;
-            sq.pad6=0;
+            sq.emissionStrength = mesh->material().emissionStrength;
+            sq.pad6 = 0;
 
             squares.push_back(sq);
         }
@@ -282,15 +282,18 @@ void OpenGLWindow::uploadSceneToGPU()
         gm.specularR = m.specular.x(); gm.specularG = m.specular.y(); gm.specularB = m.specular.z();
         gm.ks = m.ks;
         gm.shininess = m.shininess;
+        gm.emissionStrength = m.emissionStrength;
+        gm.pad2 = 0;
         gm.type = m.type;
-        gm.pad1=0; gm.pad2=0;
         
         gm.textureIdx = -1;
         if (!m.texturePath.isEmpty() && m_textureMap.contains(m.texturePath)) {
             gm.textureIdx = m_textureMap[m.texturePath];
         }
 
-        gm.pad5=0; gm.pad6=0; gm.pad7=0;
+        gm.emissionR = m.emissionColor.x();
+        gm.emissionG = m.emissionColor.y();
+        gm.emissionB = m.emissionColor.z();
         gpuMaterials.push_back(gm);
     }
 
@@ -1111,6 +1114,38 @@ void OpenGLWindow::setShininess(int value)
     Mesh* mesh = meshes[m_selectedMesh];
 
     mesh->m_material.shininess=(float)value;
+
+    update();
+    uploadSceneToGPU();
+    resetAccumulation();
+}
+
+void OpenGLWindow::setEmissionColor(const QColor &color)
+{
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+
+    mesh->m_material.emissionColor = QVector3D(color.redF(), color.greenF(), color.blueF());
+
+    update();
+    uploadSceneToGPU();
+    resetAccumulation();
+}
+
+void OpenGLWindow::setEmissionStrength(int value)
+{
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+
+    mesh->m_material.emissionStrength = (float)value / 10.0f;
 
     update();
     uploadSceneToGPU();
