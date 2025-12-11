@@ -268,6 +268,20 @@ mainWindow::mainWindow(QWidget *parent)
         shininessLabel->setText(QString("Shininess : %1").arg(value));
     });
 
+    // indice refraction verre
+
+    iorSlider = new QSlider(Qt::Horizontal);
+    iorSlider->setRange(100, 300);
+    iorSlider->setValue(150);
+    iorLabel = new QLabel(QString("IOR : %1").arg(QString::number(iorSlider->value()/100.0, 'f', 2)));
+    matLayout->addRow(iorLabel, iorSlider);
+    connect(iorSlider, &QSlider::valueChanged, this, [this](int value){
+        iorLabel->setText(QString("IOR : %1").arg(QString::number(value/100.0, 'f', 2)));
+    });
+    connect(iorSlider, &QSlider::valueChanged, this, [this](int value){
+        m_glWindow->setIor(value/100.0f);
+    });
+
     QPushButton *btnEmissionColor = new QPushButton("Changer Couleur Emission");
     matLayout->addRow("Couleur Emission :", btnEmissionColor);
 
@@ -490,6 +504,16 @@ mainWindow::mainWindow(QWidget *parent)
         dialog->open();
     });
 
+    QSlider *exposureSlider = new QSlider(Qt::Horizontal);
+    exposureSlider->setRange(1, 100); 
+    exposureSlider->setValue(10); 
+    QLabel *exposureLabel = new QLabel(QString("Exposure : %1").arg(QString::number(exposureSlider->value()/10.0, 'f', 1)));
+    globalLayout->addRow(exposureLabel, exposureSlider);
+    connect(exposureSlider, &QSlider::valueChanged, this, [this, exposureLabel](int value){
+        exposureLabel->setText(QString("Exposure : %1").arg(QString::number(value/10.0, 'f', 1)));
+        m_glWindow->setExposure(value/10.0f);
+    });
+
     QCheckBox *dofCheckbox = new QCheckBox("Enable Depth of Field");
     dofCheckbox->setChecked(false);
     globalLayout->addRow(dofCheckbox);
@@ -691,6 +715,7 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     QSignalBlocker b10(ksSlider);
     QSignalBlocker b11(shininessSlider);
     QSignalBlocker b12(emissionStrengthSlider);
+    QSignalBlocker b13(iorSlider);
 
     xSlider->setValue(pos.x() * 10);
     ySlider->setValue(pos.y() * 10);
@@ -723,6 +748,9 @@ void mainWindow::onMeshSelected(int index, const QVector3D &pos, const QVector3D
     emissionStrengthSlider->setValue(mat.emissionStrength * 10.0);
     emissionStrengthLabel->setText(QString::asprintf("Emission Strength : %5.1f", mat.emissionStrength));
     
+    iorSlider->setValue(mat.ior * 100);
+    iorLabel->setText(QString("IOR : %1").arg(QString::number(mat.ior, 'f', 2)));
+
     typeMat->setCurrentIndex(mat.type);
 }
 

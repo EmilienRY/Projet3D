@@ -5,6 +5,7 @@ struct GpuMaterial {
     float specularR, specularG, specularB, ks;
     float shininess; float emissionStrength; int normalMapIdx; int type;
     int textureIdx; float emissionR; float emissionG; float emissionB;
+    float ior; float pad0; float pad1; float pad2;
 };
 
 struct GpuVertex {
@@ -24,6 +25,7 @@ struct GpuSphere {
     float shininess; float emissionR; float emissionG; float emissionB;
     int Material_type;
     int textureIdx; float emissionStrength; int normalMapIdx;
+    float ior; float pad0; float pad1; float pad2;
 };
 
 struct GpuMesh {
@@ -47,6 +49,7 @@ struct GpuSquare {
     float specularR, specularG, specularB, ks;
     float shininess, emissionR, emissionG, emissionB;
     int Material_type, textureIdx; float emissionStrength; int normalMapIdx;
+    float ior; float pad0; float pad1; float pad2;
 };
 
 

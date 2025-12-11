@@ -23,6 +23,7 @@ struct BVHMaterial {
     QString normalMapPath;
     QVector3D emissionColor;
     float emissionStrength;
+    float ior;
 };
 
 struct BVHTriangle {

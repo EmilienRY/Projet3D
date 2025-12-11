@@ -21,6 +21,7 @@ OpenGLWindow::OpenGLWindow(QWindow *parent)
     m_focalDistance = 5.0f;
     m_enableDoF = false;
     m_bgColor = QVector3D(0.2f, 0.3f, 0.7f);
+    m_exposure = 1.0f;
 }
 
 OpenGLWindow::~OpenGLWindow()
@@ -221,6 +222,8 @@ void OpenGLWindow::uploadSceneToGPU()
                 s.normalMapIdx = m_textureMap[mesh->material().normalMapPath];
             }
             s.emissionStrength = mesh->material().emissionStrength;
+            s.ior = mesh->material().ior;
+            s.pad0 = 0; s.pad1 = 0; s.pad2 = 0;
 
             spheres.push_back(s);
         }
@@ -262,6 +265,8 @@ void OpenGLWindow::uploadSceneToGPU()
             }
 
             sq.emissionStrength = mesh->material().emissionStrength;
+            sq.ior = mesh->material().ior;
+            sq.pad0 = 0; sq.pad1 = 0; sq.pad2 = 0;
 
             squares.push_back(sq);
         }
@@ -307,6 +312,8 @@ void OpenGLWindow::uploadSceneToGPU()
         gm.emissionR = m.emissionColor.x();
         gm.emissionG = m.emissionColor.y();
         gm.emissionB = m.emissionColor.z();
+        gm.ior = m.ior;
+        gm.pad0 = 0; gm.pad1 = 0; gm.pad2 = 0;
         gpuMaterials.push_back(gm);
     }
 
@@ -585,6 +592,7 @@ void OpenGLWindow::doRayTrace()
 
     glBindTexture(GL_TEXTURE_2D, m_denoisedTex);
     m_screenProgram->setUniformValue("tex", 0);
+    m_screenProgram->setUniformValue("u_exposure", m_exposure);
 
     glBindVertexArray(m_quadVAO);
     glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -1633,4 +1641,24 @@ void OpenGLWindow::setBackgroundColor(QColor color)
 }
 
 
+void OpenGLWindow::setExposure(float value)
+{
+    m_exposure = value;
+    update();
+}
 
+void OpenGLWindow::setIor(float value)
+{
+    if (!m_scene || m_scene->meshes().isEmpty()) return;
+
+    const QVector<Mesh*>& meshes = m_scene->meshes();
+    if (m_selectedMesh < 0 || m_selectedMesh >= meshes.size()) return;
+
+    Mesh* mesh = meshes[m_selectedMesh];
+
+    mesh->m_material.ior = value;
+
+    update();
+    uploadSceneToGPU();
+    resetAccumulation();
+}

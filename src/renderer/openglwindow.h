@@ -39,6 +39,7 @@ public:
     void setKs(int value);
     void setKd(int value);
     void setShininess(int value);
+    void setIor(float value);
     void setEmissionColor(const QColor &color);
     void setEmissionStrength(int value);
     void setLightX(int value);
@@ -57,6 +58,7 @@ public:
     void setFocalDistance(float value);
     void setDoFEnabled(bool enabled);
     void setBackgroundColor(QColor color);
+    void setExposure(float value);
 
     Scene* scene() { return m_scene; }
     void setSelectedMesh(int index);
@@ -99,6 +101,7 @@ private:
     std::vector<GLuint64> m_textureHandles;
     QMap<QString, int> m_textureMap;
     QVector3D m_bgColor;
+    float m_exposure;
     
     void doRayTrace();
     void doRaster();
@@ -151,7 +154,7 @@ private:
     int m_maxBounces = 4;
     int m_shadowSamples = 1;
     int m_spp = 1;
-    int m_denoiseMode = 0; // 0 = Denoise, 1 = Accumulation Only
+    int m_denoiseMode = 0;
     float m_denoiseStrength = 0.5f;
     int m_denoisePasses = 3;
 

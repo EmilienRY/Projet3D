@@ -23,6 +23,7 @@ struct Sphere {
     vec3 specular;  float ks;
     float shininess; float emissionR, emissionG, emissionB;
     int Material_type, textureIdx; float emissionStrength; int normalMapIdx;
+    float ior; float pad0; float pad1; float pad2;
 };
 
 struct Square {
@@ -35,6 +36,7 @@ struct Square {
     vec3 specular;  float ks;
     float shininess; float emissionR, emissionG, emissionB;
     int Material_type, textureIdx; float emissionStrength; int normalMapIdx;
+    float ior; float pad0; float pad1; float pad2;
 };
 
 struct Mesh {
@@ -66,6 +68,7 @@ struct Material {
     vec3 specular; float ks;
     float shininess; float emissionStrength; int normalMapIdx; int type;
     int textureIdx; float emissionR, emissionG, emissionB;
+    float ior; float pad0; float pad1; float pad2;
 };
 
 struct Light {
@@ -204,6 +207,7 @@ struct Hit {
 
     vec3 emission;
     float emissionStrength;
+    float ior;
 };
 
 // ---------------
@@ -227,7 +231,7 @@ bool intersectSphere(vec3 ro, vec3 rd, vec4 cR, out float t)
 }
 
 bool intersectQuad(vec3 ro, vec3 rd, Square sq,
-                   out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength, out vec3 tangentOut, out int normalMapIdx)
+                   out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength, out vec3 tangentOut, out int normalMapIdx, out float ior)
 {
     vec3 A = sq.a.xyz;
     vec3 B = sq.b.xyz;
@@ -258,6 +262,7 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
         emission = vec3(sq.emissionR, sq.emissionG, sq.emissionB);
         emissionStrength = sq.emissionStrength;
         normalMapIdx = sq.normalMapIdx;
+        ior = sq.ior;
         tangentOut = normalize(B - A);
 
         float areaABC = length(cross(B-A, C-A));
@@ -286,6 +291,7 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
         emission = vec3(sq.emissionR, sq.emissionG, sq.emissionB);
         emissionStrength = sq.emissionStrength;
         normalMapIdx = sq.normalMapIdx;
+        ior = sq.ior;
         tangentOut = normalize(B - A);
 
         float areaACD = length(cross(C-A, D-A));
@@ -305,7 +311,7 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
 // ---------
 
 bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
-                    out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength, out vec3 tangentOut, out int normalMapIdx){
+                    out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength, out vec3 tangentOut, out int normalMapIdx, out float ior){
 
     vec3 v0 = vertices[tri.v0].pos.xyz;
     vec3 v1 = vertices[tri.v1].pos.xyz;
@@ -363,6 +369,7 @@ bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
     emission = vec3(mat.emissionR, mat.emissionG, mat.emissionB);
     emissionStrength = mat.emissionStrength;
     normalMapIdx = mat.normalMapIdx;
+    ior = mat.ior;
 
     return true;
 }
@@ -520,6 +527,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                 hit.normalMapIdx = spheres[i].normalMapIdx;
                 hit.emission = vec3(spheres[i].emissionR, spheres[i].emissionG, spheres[i].emissionB);
                 hit.emissionStrength = spheres[i].emissionStrength;
+                hit.ior = spheres[i].ior;
 
                 vec3 N = hit.normal;
                 float u = 0.5 + atan(N.z, N.x) / (2.0 * 3.14159265);
@@ -543,9 +551,9 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
         vec3 specular;
         int matType; vec2 uv; int texIdx;
         vec3 emission; float emissionStrength;
-        vec3 tangent; int normalMapIdx;
+        vec3 tangent; int normalMapIdx; float ior;
 
-        if (intersectQuad(ro, rd, squares[i], t, n, diffuse,specular,kd,ks,shininess, matType, uv, texIdx, emission, emissionStrength, tangent, normalMapIdx))
+        if (intersectQuad(ro, rd, squares[i], t, n, diffuse,specular,kd,ks,shininess, matType, uv, texIdx, emission, emissionStrength, tangent, normalMapIdx, ior))
         {
             if (t < hit.t) {
                 hit.t = t;
@@ -562,6 +570,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                 hit.uv = uv;
                 hit.emission = emission;
                 hit.emissionStrength = emissionStrength;
+                hit.ior = ior;
                 hit.tangent = tangent;
                 found = true;
             }
@@ -593,9 +602,9 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                     int matType;
                     vec2 uv; int texIdx;
                     vec3 emission; float emissionStrength;
-                    vec3 tangent; int normalMapIdx;
+                    vec3 tangent; int normalMapIdx; float ior;
 
-                    if (intersectTri(ro, rd, triangles[triIdx], t, n, diffuse, specular, kd, ks, shininess, matType, uv, texIdx, emission, emissionStrength, tangent, normalMapIdx)) {
+                    if (intersectTri(ro, rd, triangles[triIdx], t, n, diffuse, specular, kd, ks, shininess, matType, uv, texIdx, emission, emissionStrength, tangent, normalMapIdx, ior)) {
                         if (t < hit.t) {
                             hit.t = t;
                             hit.pos = ro + rd * t;
@@ -611,6 +620,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
                             hit.normalMapIdx = normalMapIdx;
                             hit.emission = emission;
                             hit.emissionStrength = emissionStrength;
+                            hit.ior = ior;
                             hit.tangent = tangent;
                             found = true;
                         }
@@ -641,7 +651,7 @@ void mirror(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {
 
 void glass(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput, inout uint seed) {
     float n1 = 1.0;
-    float n2 = 1.5;
+    float n2 = h.ior;
     float eta = n1 / n2;
 
     vec3 I = normalize(rd);

@@ -15,4 +15,5 @@ struct Material
 
     QVector3D emissionColor = QVector3D(0,0,0);
     float emissionStrength = 0.0f;
+    float ior = 1.5f;
 };
