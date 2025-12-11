@@ -25,6 +25,9 @@ void Scene::addLight(Light l){
 
 void Scene::clear()
 {
+    for (Mesh* m : m_meshes) {
+        delete m;
+    }
     m_meshes.clear();
     m_lights.clear();
 }
@@ -431,86 +434,6 @@ void Scene::buildCornellBox()
 
     m_lights.append(l2);
 }
-
-void Scene::loadOffFile(QString &fileName,
-                               QVector<Mesh::Vertex> &verts,
-                               QVector<unsigned int> &idx,
-                                int &faceCount)
-{
-    QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly)) {
-        qWarning() << "Unable to open OFF file:" << fileName;
-    }
-
-    QTextStream in(&file);
-
-    QString header;
-    in >> header;
-    if (header != "OFF") {
-        qWarning() << "Invalid OFF file:" << fileName;
-    }
-
-    int vertexCount = 0;
-    int edgeCount = 0;
-    in >> vertexCount >> faceCount >> edgeCount;
-
-    if (vertexCount <= 0 || faceCount <= 0) {
-        qWarning() << "Invalid mesh size";
-    }
-
-    verts.clear();
-    idx.clear();
-
-    verts.reserve(vertexCount);
-    idx.reserve(faceCount * 3);
-
-    QVector3D defaultColor(1.0f, 1.0f, 1.0f);
-
-    std::vector<QVector3D> positions;
-    positions.reserve(vertexCount);
-
-    for (int i = 0; i < vertexCount; ++i) {
-        float x, y, z;
-        in >> x >> y >> z;
-        positions.emplace_back(x, y, z);
-    }
-
-    for (auto &p : positions) {
-        Mesh::Vertex v;
-        v.pos = p;
-        v.normal = QVector3D(0, 0, 0);
-        v.color = defaultColor;
-        verts.append(v);
-    }
-
-    for (int i = 0; i < faceCount; ++i) {
-        int n, a, b, c;
-        in >> n >> a >> b >> c;
-
-        if (n != 3) {
-            qWarning() << "Non triangular face encountered. Only triangles are supported!";
-        }
-
-        idx.append(static_cast<unsigned int>(a));
-        idx.append(static_cast<unsigned int>(b));
-        idx.append(static_cast<unsigned int>(c));
-
-        QVector3D vA = verts[a].pos;
-        QVector3D vB = verts[b].pos;
-        QVector3D vC = verts[c].pos;
-        QVector3D faceNormal = QVector3D::crossProduct(vB - vA, vC - vA);
-
-        verts[a].normal += faceNormal;
-        verts[b].normal += faceNormal;
-        verts[c].normal += faceNormal;
-    }
-
-    for (int i = 0; i < verts.size(); ++i) {
-        verts[i].normal.normalize();
-    }
-}
-
-
 
 void Scene::loadObjFile(const QString &fileName,
                         QVector<Mesh::Vertex> &verts,

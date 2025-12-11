@@ -22,6 +22,7 @@ OpenGLWindow::OpenGLWindow(QWindow *parent)
     m_enableDoF = false;
     m_bgColor = QVector3D(0.2f, 0.3f, 0.7f);
     m_exposure = 1.0f;
+    m_lightSphereMesh = nullptr;
 }
 
 OpenGLWindow::~OpenGLWindow()
@@ -33,6 +34,18 @@ OpenGLWindow::~OpenGLWindow()
     delete m_accumulationProgram;
     delete m_screenProgram;
     delete m_scene;
+    delete m_lightSphereMesh;
+
+    for (auto it = m_glHandles.begin(); it != m_glHandles.end(); ++it) {
+        if (glIsTextureHandleResidentARB(it.value())) {
+            glMakeTextureHandleNonResidentARB(it.value());
+        }
+    }
+    for (auto it = m_glTextures.begin(); it != m_glTextures.end(); ++it) {
+        glDeleteTextures(1, &it.value());
+    }
+    m_glHandles.clear();
+    m_glTextures.clear();
     doneCurrent();
 }
 
@@ -116,8 +129,10 @@ void OpenGLWindow::initializeGL()
 
     glGetTextureHandleARB = (PFNGLGETTEXTUREHANDLEARBPROC)context()->getProcAddress("glGetTextureHandleARB");
     glMakeTextureHandleResidentARB = (PFNGLMAKETEXTUREHANDLERESIDENTARBPROC)context()->getProcAddress("glMakeTextureHandleResidentARB");
+    glMakeTextureHandleNonResidentARB = (PFNGLMAKETEXTUREHANDLENONRESIDENTARBPROC)context()->getProcAddress("glMakeTextureHandleNonResidentARB");
+    glIsTextureHandleResidentARB = (PFNGLISTEXTUREHANDLERESIDENTARBPROC)context()->getProcAddress("glIsTextureHandleResidentARB");
 
-    if (!glGetTextureHandleARB || !glMakeTextureHandleResidentARB) {
+    if (!glGetTextureHandleARB || !glMakeTextureHandleResidentARB || !glMakeTextureHandleNonResidentARB || !glIsTextureHandleResidentARB) {
         qWarning() << "GL_ARB_bindless_texture not supported or not found!";
     }
 
@@ -129,6 +144,14 @@ void OpenGLWindow::initializeGL()
     m_lastFpsTime = m_lastTimeMs;
     m_camera.setPosition(QVector3D(0.0f, 1.5f, 5.0f));
     m_camera.setYawPitch(-90.0f, -10.0f);
+
+    QVector<Mesh::Vertex> sphereVerts;
+    QVector<unsigned int> sphereIdx;
+    Material mat; 
+    m_scene->generateSphereMesh(1.0f, 16, 16, sphereVerts, sphereIdx, mat);
+    
+    m_lightSphereMesh = new Mesh();
+    m_lightSphereMesh->initialize(sphereVerts, sphereIdx);
 
     emit sceneReady();
 }
@@ -420,6 +443,17 @@ void OpenGLWindow::initTexSSBO()
         if (path.isEmpty()) return;
         if (m_textureMap.contains(path)) return;
 
+        if (m_glHandles.contains(path)) {
+            GLuint64 handle = m_glHandles[path];
+
+            if (!glIsTextureHandleResidentARB(handle)) {
+                glMakeTextureHandleResidentARB(handle);
+            }
+            m_textureHandles.push_back(handle);
+            m_textureMap[path] = m_textureHandles.size() - 1;
+            return;
+        }
+
         QImage img(path);
         if (img.isNull()) {
             qWarning() << "Failed to load texture:" << path;
@@ -442,6 +476,9 @@ void OpenGLWindow::initTexSSBO()
             return;
         }
         glMakeTextureHandleResidentARB(handle);
+
+        m_glTextures[path] = texture;
+        m_glHandles[path] = handle;
 
         m_textureHandles.push_back(handle);
         m_textureMap[path] = m_textureHandles.size() - 1;
@@ -685,9 +722,24 @@ void OpenGLWindow::doRaster()
         m_program->setUniformValue("view", view);
         m_program->setUniformValue("proj", proj);
 
+        m_program->setUniformValue("u_useUniformColor", 0);
         for (Mesh* mesh : m_scene->meshes()) {
             m_program->setUniformValue("model", mesh->modelMatrix * model);
             mesh->render();
+        }
+
+        if (m_lightSphereMesh) {
+            m_program->setUniformValue("u_useUniformColor", 1);
+            for (const Light& light : m_scene->lights()) {
+                QMatrix4x4 lightModel;
+                lightModel.setToIdentity();
+                lightModel.translate(light.position);
+                lightModel.scale(0.2f); 
+                
+                m_program->setUniformValue("model", lightModel);
+                m_program->setUniformValue("u_color", light.color);
+                m_lightSphereMesh->render();
+            }
         }
 
         m_program->release();
@@ -885,114 +937,6 @@ void OpenGLWindow::focusOutEvent(QFocusEvent *ev)
     }
 
     QOpenGLWindow::focusOutEvent(ev);
-}
-
-void OpenGLWindow::loadOffFile(const QString &fileName,
-                               QVector<Mesh::Vertex> &verts,
-                               QVector<unsigned int> &idx,
-                               Material mat)
-{
-    QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly)) {
-        qWarning() << "Unable to open OFF file:" << fileName;
-    }
-
-    QTextStream in(&file);
-
-    QString header;
-    in >> header;
-    if (header != "OFF") {
-        qWarning() << "Invalid OFF file:" << fileName;
-    }
-
-    int vertexCount = 0;
-    int faceCount = 0;
-    int edgeCount = 0;
-    in >> vertexCount >> faceCount >> edgeCount;
-
-    if (vertexCount <= 0 || faceCount <= 0) {
-        qWarning() << "Invalid mesh size";
-    }
-
-    verts.clear();
-    idx.clear();
-
-    verts.reserve(vertexCount);
-    idx.reserve(faceCount * 3);
-
-    QVector3D color;
-
-    if (mat.color != QVector3D(0.0f, 0.0f, 0.0f)){
-        color = mat.color;
-    }
-    else {
-        color = QVector3D (1.0f, 1.0f, 1.0f);
-    }
-
-    std::vector<QVector3D> positions;
-    positions.reserve(vertexCount);
-
-    for (int i = 0; i < vertexCount; ++i) {
-        float x, y, z;
-        in >> x >> y >> z;
-        positions.emplace_back(x, y, z);
-    }
-
-    for (auto &p : positions) {
-        Mesh::Vertex v;
-        v.pos = p;
-        v.normal = QVector3D(0, 0, 0);
-        v.color = color;
-        v.uv = QVector2D(0, 0);
-        verts.append(v);
-    }
-
-    for (int i = 0; i < faceCount; ++i) {
-        int n, a, b, c;
-        in >> n >> a >> b >> c;
-
-        if (n != 3) {
-            qWarning() << "Non triangular face encountered. Only triangles are supported!";
-        }
-
-        idx.append(static_cast<unsigned int>(a));
-        idx.append(static_cast<unsigned int>(b));
-        idx.append(static_cast<unsigned int>(c));
-    }
-}
-
-void OpenGLWindow::openOffMesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, Material mat)
-{
-    makeCurrent();
-    QString meshName = filename;
-    meshName.remove(0,filename.lastIndexOf("/")+1);
-    meshName.remove(meshName.indexOf("."), meshName.size());
-
-    Mesh* mesh = new Mesh();
-    mesh->initialize(verts, idx);
-    mesh->modelMatrix.setToIdentity();
-    mesh->addMaterial(mat);
-
-    int countName = 0;
-
-    m_scene->addMesh(mesh);
-
-    for (int i = 0; i < m_scene->meshes().size(); ++i) {
-        if (meshName == m_scene->meshes()[i]->name){
-            countName++;
-        }
-    }
-
-    if (countName > 0){
-        meshName.insert(meshName.size(), QString::number(countName+1));
-    }
-    mesh->name = meshName;
-
-    uploadSceneToGPU();
-    resetAccumulation();
-    doneCurrent();
-    update();
-    emit sceneReady();
 }
 
 void OpenGLWindow::openOBJmesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, const int &faceCount, Material mat)

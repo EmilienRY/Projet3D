@@ -23,7 +23,6 @@ public:
     void buildPlaneSphere();
     void buildCornellBox();
     void buildEmptyScene();
-    void loadOffFile(QString &fileName, QVector<Mesh::Vertex> &verts, QVector<unsigned int> &idx, int &faceCount);
     void loadObjFile(const QString &fileName,QVector<Mesh::Vertex> &verts,QVector<unsigned int> &idx,int &faceCount, Material mat);
 
 private:

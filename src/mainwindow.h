@@ -16,7 +16,6 @@ public:
     virtual ~mainWindow() = default;
 
 private slots:
-    void openOffMesh();
     void openObjMesh();
     void onMeshSelected(int index, const QVector3D &pos, const QVector3D &rota, const float &scale, Material mat);
     void onLighthSelected(int index, QVector3D pos, float intensity, float radius);

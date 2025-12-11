@@ -36,10 +36,7 @@ mainWindow::mainWindow(QWidget *parent)
 void mainWindow::setupMenus()
 {
     QMenu *menuFile = menuBar()->addMenu("Fichier");
-    QAction *loadOFF = new QAction("Charger Mesh (.off)", this);
     QAction *loadOBJ = new QAction("Charger Mesh (.obj)", this);
-    menuFile->addAction(loadOFF);
-    connect(loadOFF, &QAction::triggered, this, &mainWindow::openOffMesh);
     menuFile->addAction(loadOBJ);
     connect(loadOBJ, &QAction::triggered, this, &mainWindow::openObjMesh);
 
@@ -597,38 +594,6 @@ QGroupBox* mainWindow::createGlobalGroup()
 
     globalGroup->setLayout(globalLayout);
     return globalGroup;
-}
-
-void mainWindow::openOffMesh()
-{
-    QFileDialog dialog(this);
-    dialog.setOption(QFileDialog::DontUseNativeDialog, true);
-    dialog.setNameFilter("Fichiers OFF (*.off)");
-    dialog.setWindowTitle("Choisir un mesh");
-
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-
-    QString fileName = dialog.selectedFiles().first();
-
-    QtConcurrent::run([this, fileName]() {
-        Material mat;
-        mat.color = QVector3D(0.8f, 0.8f, 0.8f);
-        mat.specularColor = QVector3D(0.0f, 0.0f, 0.0f);
-        mat.kd = 1.0f;
-        mat.ks = 0.0f;
-        mat.shininess = 1.0f;
-        mat.type = 0;
-
-        QVector<Mesh::Vertex> verts;
-        QVector<unsigned int> idx;
-
-        m_glWindow->loadOffFile(fileName, verts, idx, mat);
-
-        QMetaObject::invokeMethod(this, [=]() {
-            m_glWindow->openOffMesh(fileName, verts, idx, mat);
-        });
-    });
 }
 
 void mainWindow::openObjMesh()

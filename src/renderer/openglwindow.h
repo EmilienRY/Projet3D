@@ -19,11 +19,6 @@ class OpenGLWindow : public QOpenGLWindow, protected QOpenGLFunctions_4_5_Core
 public:
     explicit OpenGLWindow(QWindow *parent = nullptr);
     ~OpenGLWindow();
-    void openOffMesh(const QString filename, const QVector<Mesh::Vertex> &verts, const QVector<unsigned int> &idx, Material mat);
-    static void loadOffFile(const QString &fileName,
-                     QVector<Mesh::Vertex> &verts,
-                     QVector<unsigned int> &idx,
-                     Material mat);
     void changeScene();
     void resetScene();
 
@@ -94,12 +89,18 @@ protected:
 private:
     typedef GLuint64 (APIENTRY *PFNGLGETTEXTUREHANDLEARBPROC) (GLuint texture);
     typedef void (APIENTRY *PFNGLMAKETEXTUREHANDLERESIDENTARBPROC) (GLuint64 handle);
+    typedef void (APIENTRY *PFNGLMAKETEXTUREHANDLENONRESIDENTARBPROC) (GLuint64 handle);
+    typedef GLboolean (APIENTRY *PFNGLISTEXTUREHANDLERESIDENTARBPROC) (GLuint64 handle);
     
     PFNGLGETTEXTUREHANDLEARBPROC glGetTextureHandleARB = nullptr;
     PFNGLMAKETEXTUREHANDLERESIDENTARBPROC glMakeTextureHandleResidentARB = nullptr;
+    PFNGLMAKETEXTUREHANDLENONRESIDENTARBPROC glMakeTextureHandleNonResidentARB = nullptr;
+    PFNGLISTEXTUREHANDLERESIDENTARBPROC glIsTextureHandleResidentARB = nullptr;
 
     std::vector<GLuint64> m_textureHandles;
     QMap<QString, int> m_textureMap;
+    QMap<QString, GLuint> m_glTextures;
+    QMap<QString, GLuint64> m_glHandles;
     QVector3D m_bgColor;
     float m_exposure;
     
@@ -176,6 +177,8 @@ private:
     int m_gpuMeshCount = 0;
 
     BVH m_bvh;
+
+    Mesh* m_lightSphereMesh = nullptr;
 
     signals:
         void fpsChanged(float fps);
