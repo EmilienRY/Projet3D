@@ -491,7 +491,7 @@ void OpenGLWindow::doRayTrace()
     int gx = (width()+15)/16;
     int gy = (height()+15)/16;
 
-    // RAYTRACE
+    // raytracing
     m_computeProgram->bind();
 
     m_computeProgram->setUniformValue("u_sphereCount",  m_gpuSphereCount);
@@ -501,7 +501,6 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->setUniformValue("u_camFront",     m_camera.front());
     m_computeProgram->setUniformValue("u_camRight",     m_camera.right());
     m_computeProgram->setUniformValue("u_camUp",        m_camera.up());
-    m_computeProgram->setUniformValue("u_fovDeg",       60.0f);
     m_computeProgram->setUniformValue("u_width",        width());
     m_computeProgram->setUniformValue("u_height",       height());
     m_computeProgram->setUniformValue("u_frameIndex",   m_accumFrame);
@@ -511,7 +510,7 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->setUniformValue("u_maxBounces",  m_maxBounces);
     m_computeProgram->setUniformValue("u_shadowSamples",  m_shadowSamples);
 
-    m_computeProgram->setUniformValue("u_spp", m_spp);
+    m_computeProgram->setUniformValue("u_nbRay", m_nbRay);
     m_computeProgram->setUniformValue("u_lensRadius", m_lensRadius);
     m_computeProgram->setUniformValue("u_focalDistance", m_focalDistance);
     m_computeProgram->setUniformValue("u_enableDoF", (int)m_enableDoF);
@@ -524,7 +523,7 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->release();
 
 
-    // DENOISE + ACCUMULATION
+    // débruitage et accum
 
     if (m_denoiseMode == 0)
     {
@@ -567,9 +566,8 @@ void OpenGLWindow::doRayTrace()
 
         m_denoiseProgram->release();
     }
-    else
+    else  // accumulation
     {
-        // ACCUMULATION ONLY
         m_accumulationProgram->bind();
         m_accumulationProgram->setUniformValue("u_frameIndex", m_accumFrame);
 
@@ -583,7 +581,7 @@ void OpenGLWindow::doRayTrace()
         m_accumulationProgram->release();
     }
 
-    // AFFICHAGE
+    // affichage
 
     glDisable(GL_DEPTH_TEST);
 
@@ -627,6 +625,8 @@ void OpenGLWindow::screenshot()
             float g = pixels[idx + 1];
             float b = pixels[idx + 2];
             float a = pixels[idx + 3];
+
+
             r = qMin(qMax(r, 0.0f), 1.0f);
             g = qMin(qMax(g, 0.0f), 1.0f);
             b = qMin(qMax(b, 0.0f), 1.0f);
@@ -665,6 +665,7 @@ void OpenGLWindow::doRaster()
         QVector3D right   = QVector3D::crossProduct(forward, QVector3D(0.0f, 1.0f, 0.0f)).normalized();
         worldMove = forward * dir.z() + right * dir.x();
     }
+
     m_camera.processKeyboard(worldMove, dt);
 
     glEnable(GL_DEPTH_TEST);
@@ -722,8 +723,6 @@ void OpenGLWindow::paintGL()
 void OpenGLWindow::loadShaders()
 {
 
-    // RAYTRACING SHADER
-
     m_computeProgram = new QOpenGLShaderProgram();
     if (!m_computeProgram->addShaderFromSourceFile(
             QOpenGLShader::Compute, "src/shaders/raytrace.comp")) {
@@ -733,8 +732,6 @@ void OpenGLWindow::loadShaders()
         qWarning() << "Compute shader link error:" << m_computeProgram->log();
     }
 
-
-    // DENOISE SHADER
 
     m_denoiseProgram = new QOpenGLShaderProgram();
     if (!m_denoiseProgram->addShaderFromSourceFile(
@@ -747,7 +744,6 @@ void OpenGLWindow::loadShaders()
         qWarning() << "Denoise shader link error:" << m_denoiseProgram->log();
     }
 
-    // ACCUMULATION SHADER
 
     m_accumulationProgram = new QOpenGLShaderProgram();
     if (!m_accumulationProgram->addShaderFromSourceFile(
@@ -761,7 +757,6 @@ void OpenGLWindow::loadShaders()
     }
 
 
-    // SCREEN SHADER
 
     m_screenProgram = new QOpenGLShaderProgram();
     if (!m_screenProgram->addShaderFromSourceFile(
@@ -775,7 +770,6 @@ void OpenGLWindow::loadShaders()
     if (!m_screenProgram->link())
         qWarning() << "Screen program link error:" << m_screenProgram->log();
 
-    // RASTERIZATION
 
     m_program = new QOpenGLShaderProgram();
     bool ok = m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "src/shaders/basic.vert");
@@ -1495,7 +1489,6 @@ void OpenGLWindow::addSphere(QVector<Mesh::Vertex> verts, QVector<unsigned int> 
 void OpenGLWindow::addPlane(QVector<Mesh::Vertex> verts, QVector<unsigned int> idx, Material mat){
 
     makeCurrent();
-    qDebug() << "début ajout" ;
     Mesh* plane = new Mesh();
     plane->initialize(verts, idx);
     plane->modelMatrix.setToIdentity();
@@ -1504,8 +1497,7 @@ void OpenGLWindow::addPlane(QVector<Mesh::Vertex> verts, QVector<unsigned int> i
 
     QString meshName = "plane";
     int countName = 0;
-    qDebug() << "nom" ;
-
+    
     for (int i = 0; i < m_scene->meshes().size(); ++i) {
         if (meshName == m_scene->meshes()[i]->name){
             countName++;
@@ -1516,8 +1508,6 @@ void OpenGLWindow::addPlane(QVector<Mesh::Vertex> verts, QVector<unsigned int> i
         meshName.insert(meshName.size(), QString::number(countName+1));
     }
     plane->name = meshName;
-
-    qDebug() << "nom initialisé" ;
 
 
     m_scene->addMesh(plane);
@@ -1552,10 +1542,11 @@ void OpenGLWindow::setShadowSamples(int value)
     }
 }
 
-void OpenGLWindow::setSpp(int value)
+
+void OpenGLWindow::setNbRay(int value)
 {
-    if (m_spp != value) {
-        m_spp = value;
+    if (m_nbRay != value) {
+        m_nbRay = value;
         resetAccumulation();
         update();
     }
@@ -1573,11 +1564,8 @@ void OpenGLWindow::setDenoiseMode(int mode)
 void OpenGLWindow::setDenoiseStrength(int value)
 {
     float strength = value / 10.0f;
-    if (std::abs(m_denoiseStrength - strength) > 1e-4f) {
+    if (m_denoiseStrength != strength) {
         m_denoiseStrength = strength;
-        // Changing denoise strength doesn't necessarily require resetting accumulation if we consider it a post-process,
-        // but since it affects how we blend/filter, it might be cleaner to reset or just update.
-        // If we don't reset, the user sees the effect immediately on the current frame.
         update();
     }
 }
@@ -1592,7 +1580,7 @@ void OpenGLWindow::setDenoisePasses(int value)
 
 void OpenGLWindow::setLensRadius(float value)
 {
-    if (std::abs(m_lensRadius - value) > 1e-6f) {
+    if (m_lensRadius != value) {
         m_lensRadius = value;
         resetAccumulation();
         update();
@@ -1601,7 +1589,8 @@ void OpenGLWindow::setLensRadius(float value)
 
 void OpenGLWindow::setFocalDistance(float value)
 {
-    if (std::abs(m_focalDistance - value) > 1e-6f) {
+
+    if (m_focalDistance != value) {
         m_focalDistance = value;
         resetAccumulation();
         update();

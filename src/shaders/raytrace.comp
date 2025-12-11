@@ -2,28 +2,34 @@
 #extension GL_ARB_bindless_texture : require
 #extension GL_ARB_gpu_shader_int64 : require
 
-// ---------------
-// THREAD GROUP
-// ---------------
 layout(local_size_x = 16, local_size_y = 16) in;
 
-// ---------------------
-// ACCUMULATION IMAGE
-// ---------------------
+// img accum
 layout(rgba32f, binding = 0) coherent uniform image2D imgAccum;
 layout(rgba32f, binding = 4) uniform writeonly image2D imgGbuffer;
 
-// ---------
-// TYPES
-// --------
+// type
 struct Sphere {
     vec4 centerRadius;
 
-    vec3 diffuse;   float kd;
-    vec3 specular;  float ks;
-    float shininess; float emissionR, emissionG, emissionB;
-    int Material_type, textureIdx; float emissionStrength; int normalMapIdx;
-    float ior; float pad0; float pad1; float pad2;
+    vec3 diffuse;
+    float kd;
+
+    vec3 specular;
+    float ks;
+
+    float shininess;
+    float emissionR, emissionG, emissionB;
+
+    int materialType;
+    int textureIdx;
+    float emissionStrength;
+    int normalMapIdx;
+
+    float ior;
+    float pad0;
+    float pad1;
+    float pad2;
 };
 
 struct Square {
@@ -32,15 +38,28 @@ struct Square {
     vec4 c;
     vec4 d;
 
-    vec3 diffuse;   float kd;
-    vec3 specular;  float ks;
-    float shininess; float emissionR, emissionG, emissionB;
-    int Material_type, textureIdx; float emissionStrength; int normalMapIdx;
-    float ior; float pad0; float pad1; float pad2;
+    vec3 diffuse;
+    float kd;
+
+    vec3 specular;
+    float ks;
+
+    float shininess;
+    float emissionR, emissionG, emissionB;
+
+    int materialType;
+    int textureIdx;
+    float emissionStrength;
+    int normalMapIdx;
+
+    float ior;
+    float pad0;
+    float pad1;
+    float pad2;
 };
 
 struct Mesh {
-    int Material_type;
+    int materialType;
     int triOffset;
     int triCount;
     int pad0;
@@ -58,28 +77,42 @@ struct TriangleIndexed {
 };
 
 struct Vertex {
-    vec4 pos; // xyz, pad
+    vec4 pos;    // xyz, pad
     vec4 normal; // xyz, pad
-    vec4 uv; // uv, pad, pad
+    vec4 uv;     // uv, pad, pad
 };
 
 struct Material {
-    vec3 diffuse; float kd;
-    vec3 specular; float ks;
-    float shininess; float emissionStrength; int normalMapIdx; int type;
-    int textureIdx; float emissionR, emissionG, emissionB;
-    float ior; float pad0; float pad1; float pad2;
+    vec3 diffuse;
+    float kd;
+
+    vec3 specular;
+    float ks;
+
+    float shininess;
+    float emissionStrength;
+    int normalMapIdx;
+    int type;
+
+    int textureIdx;
+    float emissionR, emissionG, emissionB;
+
+    float ior;
+    float pad0;
+    float pad1;
+    float pad2;
 };
 
 struct Light {
     vec4 posIntensity;
     vec4 color;
-    float lightRadius, pad1, pad2, pad3;
+    float lightRadius;
+    float pad1;
+    float pad2;
+    float pad3;
 };
 
-// --------
-// SSBO
-// --------
+//SSBO
 layout(std430, binding = 1) buffer Spheres { Sphere spheres[]; };
 layout(std430, binding = 2) buffer Lights  { Light  lights[];  };
 layout(std430, binding = 3) buffer Squares { Square squares[]; };
@@ -90,33 +123,29 @@ layout(std430, binding = 7) buffer Vertices { Vertex vertices[]; };
 layout(std430, binding = 8) buffer Materials { Material materials[]; };
 layout(std430, binding = 9) buffer TextureHandles { uint64_t handles[]; };
 
-// -----------
-// UNIFORMS
-// -----------
+// uniform
 layout(location = 0) uniform int u_sphereCount;
 layout(location = 1) uniform int u_lightCount;
 layout(location = 2) uniform vec3 u_camPos;
 layout(location = 3) uniform vec3 u_camFront;
 layout(location = 4) uniform vec3 u_camRight;
 layout(location = 5) uniform vec3 u_camUp;
-layout(location = 6) uniform float u_fovDeg;
-layout(location = 7) uniform int u_width;
-layout(location = 8) uniform int u_height;
-layout(location = 9) uniform int u_squareCount;
-layout(location = 10) uniform int u_frameIndex;
-layout(location = 11) uniform int u_spp;
-layout(location = 12) uniform int u_triangleCount;
-layout(location = 13) uniform int u_meshCount;
-layout(location = 14) uniform int u_maxBounces;
-layout(location = 15) uniform int u_shadowSamples;
-layout(location = 16) uniform float u_lensRadius;
-layout(location = 17) uniform float u_focalDistance;
-layout(location = 18) uniform int u_enableDoF;
-layout(location = 19) uniform vec3 u_bgColor;
+layout(location = 6) uniform int u_width;
+layout(location = 7) uniform int u_height;
+layout(location = 8) uniform int u_squareCount;
+layout(location = 9) uniform int u_frameIndex;
+layout(location = 10) uniform int u_nbRay;
+layout(location = 11) uniform int u_triangleCount;
+layout(location = 12) uniform int u_meshCount;
+layout(location = 13) uniform int u_maxBounces;
+layout(location = 14) uniform int u_shadowSamples;
+layout(location = 15) uniform float u_lensRadius;
+layout(location = 16) uniform float u_focalDistance;
+layout(location = 17) uniform int u_enableDoF;
+layout(location = 18) uniform vec3 u_bgColor;
 
-// -------
-// ALEA
-// -------
+// alea 
+
 uint hash_u(uint x)
 {
     x ^= x >> 16;
@@ -132,10 +161,6 @@ float randf(inout uint state)
     state = hash_u(state);
     return float(state) / 4294967296.0;
 }
-
-// -----------------------
-// hemisphere sampling
-// -----------------------
 
 vec3 randomHemisphere(vec3 N, inout uint seed)
 {
@@ -157,17 +182,7 @@ vec3 randomHemisphere(vec3 N, inout uint seed)
     );
 }
 
-vec3 sampleUniformSphere(inout uint seed)
-{
-    float u = randf(seed);
-    float v = randf(seed);
-    float z = 1.0 - 2.0 * u;
-    float phi = 2.0 * 3.14159265358979323846 * v;
-    float r = sqrt(max(0.0, 1.0 - z * z));
-    return vec3(r * cos(phi), r * sin(phi), z);
-}
-
-vec2 concentricSampleDisk(vec2 u)
+vec2 sampleDisk(vec2 u)
 {
     float ox = 2.0 * u.x - 1.0;
     float oy = 2.0 * u.y - 1.0;
@@ -183,9 +198,8 @@ vec2 concentricSampleDisk(vec2 u)
     return r * vec2(cos(theta), sin(theta));
 }
 
-// -------------
-// HIT STRUCT
-// -------------
+// hit struct
+
 
 struct Hit {
     float t;
@@ -201,7 +215,7 @@ struct Hit {
     float ks;
 
     float shininess;
-    int Material_type;
+    int materialType;
     int textureIdx;
     int normalMapIdx;
 
@@ -210,11 +224,12 @@ struct Hit {
     float ior;
 };
 
-// ---------------
-// INTERSECTIONS
-// ---------------
-bool intersectSphere(vec3 ro, vec3 rd, vec4 cR, out float t)
+
+// Intersections
+
+bool intersectSphere(vec3 ro, vec3 rd, int i, inout Hit hit)
 {
+    vec4 cR = spheres[i].centerRadius;
     vec3 oc = ro - cR.xyz;
     float r = cR.w;
     float b = dot(oc, rd);
@@ -226,13 +241,43 @@ bool intersectSphere(vec3 ro, vec3 rd, vec4 cR, out float t)
     float t1 = -b - sq;
     float t2 = -b + sq;
 
-    t = (t1 > 1e-4) ? t1 : ((t2 > 1e-4) ? t2 : -1.0);
-    return t > 0.0;
+    float t = (t1 > 1e-4) ? t1 : ((t2 > 1e-4) ? t2 : -1.0);
+    
+    if (t > 0.0 && t < hit.t)
+    {
+        hit.t = t;
+        hit.pos = ro + rd * t;
+        hit.normal = normalize(hit.pos - cR.xyz);
+
+        Sphere s = spheres[i];
+        hit.diffuse = s.diffuse;
+        hit.kd = s.kd;
+        hit.specular = s.specular;
+        hit.ks = s.ks;
+        hit.shininess = s.shininess;
+        hit.materialType = s.materialType;
+        hit.textureIdx = s.textureIdx;
+        hit.normalMapIdx = s.normalMapIdx;
+        hit.emission = vec3(s.emissionR, s.emissionG, s.emissionB);
+        hit.emissionStrength = s.emissionStrength;
+        hit.ior = s.ior;
+
+        vec3 N = hit.normal;
+        float u = 0.5 + atan(N.z, N.x) / (2.0 * 3.14159265);
+        float v = 0.5 + asin(N.y) / 3.14159265;
+        hit.uv = vec2(u, v);
+        
+        hit.tangent = normalize(vec3(-N.z, 0.0, N.x));
+        if (length(hit.tangent) < 0.001) hit.tangent = vec3(1,0,0);
+
+        return true;
+    }
+    return false;
 }
 
-bool intersectQuad(vec3 ro, vec3 rd, Square sq,
-                   out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength, out vec3 tangentOut, out int normalMapIdx, out float ior)
-{
+bool intersectQuad(vec3 ro, vec3 rd, int i, inout Hit hit) {
+
+    Square sq = squares[i];
     vec3 A = sq.a.xyz;
     vec3 B = sq.b.xyz;
     vec3 C = sq.c.xyz;
@@ -243,76 +288,68 @@ bool intersectQuad(vec3 ro, vec3 rd, Square sq,
     if (abs(denom) < 1e-6) return false;
 
     float t = dot(A - ro, N) / denom;
-    if (t <= 1e-4) return false;
+    if (t <= 1e-4 || t >= hit.t) return false;
 
     vec3 P = ro + rd * t;
+    bool inside = false;
+    vec2 uv = vec2(0.0);
+
 
     vec3 c1 = cross(B - A, P - A);
     vec3 c2 = cross(C - B, P - B);
     vec3 c3 = cross(A - C, P - C);
 
     if (dot(c1,N) >= 0.0 && dot(c2,N) >= 0.0 && dot(c3,N) >= 0.0) {
-        tHit = t; normalOut = N; diffuse = sq.diffuse;
-        specular=sq.specular;
-        kd=sq.kd;
-        ks=sq.ks;
-        shininess=sq.shininess;
-        matType = sq.Material_type;
-        texIdx = sq.textureIdx;
-        emission = vec3(sq.emissionR, sq.emissionG, sq.emissionB);
-        emissionStrength = sq.emissionStrength;
-        normalMapIdx = sq.normalMapIdx;
-        ior = sq.ior;
-        tangentOut = normalize(B - A);
-
+        inside = true;
         float areaABC = length(cross(B-A, C-A));
-        float u = length(c2) / areaABC;
-        float v = length(c3) / areaABC;
-        float w = length(c1) / areaABC;
-        uvOut = u*vec2(0,0) + v*vec2(1,0) + w*vec2(1,1);
+        float u_bary = length(c2) / areaABC;
+        float v_bary = length(c3) / areaABC;
+        float w_bary = length(c1) / areaABC;
+        uv = u_bary*vec2(0,0) + v_bary*vec2(1,0) + w_bary*vec2(1,1);
+    } 
+    else {
 
-        return true;
+        vec3 c4 = cross(C - A, P - A);
+        vec3 c5 = cross(D - C, P - C);
+        vec3 c6 = cross(A - D, P - D);
+
+        if (dot(c4,N) >= 0.0 && dot(c5,N) >= 0.0 && dot(c6,N) >= 0.0) {
+            inside = true;
+            float areaACD = length(cross(C-A, D-A));
+            float u_bary = length(c5) / areaACD;
+            float v_bary = length(c6) / areaACD;
+            float w_bary = length(c4) / areaACD;
+            uv = u_bary*vec2(0,0) + v_bary*vec2(1,1) + w_bary*vec2(0,1);
+        }
     }
 
-    vec3 c4 = cross(C - A, P - A);
-    vec3 c5 = cross(D - C, P - C);
-    vec3 c6 = cross(A - D, P - D);
-
-    if (dot(c4,N) >= 0.0 && dot(c5,N) >= 0.0 && dot(c6,N) >= 0.0) {
-        tHit = t;
-        normalOut = N;
-        diffuse = sq.diffuse;
-        specular=sq.specular;
-        kd=sq.kd;
-        ks=sq.ks;
-        shininess=sq.shininess;
-        matType = sq.Material_type;
-        texIdx = sq.textureIdx;
-        emission = vec3(sq.emissionR, sq.emissionG, sq.emissionB);
-        emissionStrength = sq.emissionStrength;
-        normalMapIdx = sq.normalMapIdx;
-        ior = sq.ior;
-        tangentOut = normalize(B - A);
-
-        float areaACD = length(cross(C-A, D-A));
-        float u = length(c5) / areaACD;
-        float v = length(c6) / areaACD;
-        float w = length(c4) / areaACD;
-        uvOut = u*vec2(0,0) + v*vec2(1,1) + w*vec2(0,1);
-
+    if (inside) {
+        hit.t = t;
+        hit.pos = P;
+        hit.normal = N;
+        hit.uv = uv;
+        hit.tangent = normalize(B - A);
+        
+        hit.diffuse = sq.diffuse;
+        hit.specular = sq.specular;
+        hit.kd = sq.kd;
+        hit.ks = sq.ks;
+        hit.shininess = sq.shininess;
+        hit.materialType = sq.materialType;
+        hit.textureIdx = sq.textureIdx;
+        hit.emission = vec3(sq.emissionR, sq.emissionG, sq.emissionB);
+        hit.emissionStrength = sq.emissionStrength;
+        hit.normalMapIdx = sq.normalMapIdx;
+        hit.ior = sq.ior;
+        
         return true;
     }
 
     return false;
 }
 
-// ---------
-// Intersection des triangles
-// ---------
-
-bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
-                    out float tHit, out vec3 normalOut, out vec3 diffuse, out vec3 specular, out float kd,out float ks,out float shininess, out int matType, out vec2 uvOut, out int texIdx, out vec3 emission, out float emissionStrength, out vec3 tangentOut, out int normalMapIdx, out float ior){
-
+bool intersectTri(vec3 ro, vec3 rd, int triIdx, inout Hit hit) {
+    TriangleIndexed tri = triangles[triIdx];
     vec3 v0 = vertices[tri.v0].pos.xyz;
     vec3 v1 = vertices[tri.v1].pos.xyz;
     vec3 v2 = vertices[tri.v2].pos.xyz;
@@ -322,7 +359,7 @@ bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
 
     vec3 pvec = cross(rd, e2);
     float det = dot(e1, pvec);
-    float detInv = 1.0/det;
+    float detInv = 1.0 / det;
 
     if (abs(det) < 1e-6) return false;
 
@@ -335,48 +372,46 @@ bool intersectTri(vec3 ro, vec3 rd, TriangleIndexed tri,
     if (v < 0.0 || u + v > 1.0) return false;
 
     float t = dot(e2, qvec) * detInv;
-    if (t <= 1e-4) return false;
+    if (t <= 1e-4 || t >= hit.t) return false;
 
-    tHit = t;
+    hit.t = t;
+    hit.pos = ro + rd * t;
 
     vec3 n0 = vertices[tri.v0].normal.xyz;
     vec3 n1 = vertices[tri.v1].normal.xyz;
     vec3 n2 = vertices[tri.v2].normal.xyz;
-    normalOut = normalize((1.0 - u - v) * n0 + u * n1 + v * n2);
+    hit.normal = normalize((1.0 - u - v) * n0 + u * n1 + v * n2);
 
     vec2 uv0 = vertices[tri.v0].uv.xy;
     vec2 uv1 = vertices[tri.v1].uv.xy;
     vec2 uv2 = vertices[tri.v2].uv.xy;
-    uvOut = (1.0 - u - v) * uv0 + u * uv1 + v * uv2;
+    hit.uv = (1.0 - u - v) * uv0 + u * uv1 + v * uv2;
+
 
     vec2 deltaUV1 = uv1 - uv0;
     vec2 deltaUV2 = uv2 - uv0;
     float f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
     
-    tangentOut.x = f * (deltaUV2.y * e1.x - deltaUV1.y * e2.x);
-    tangentOut.y = f * (deltaUV2.y * e1.y - deltaUV1.y * e2.y);
-    tangentOut.z = f * (deltaUV2.y * e1.z - deltaUV1.y * e2.z);
-    tangentOut = normalize(tangentOut);
+    vec3 tangent = f * (deltaUV2.y * e1 - deltaUV1.y * e2);
+    hit.tangent = normalize(tangent);
+
 
     Material mat = materials[tri.matIdx];
-    diffuse = mat.diffuse;
-    specular = mat.specular;
-    kd = mat.kd;
-    ks = mat.ks;
-    shininess = mat.shininess;
-    matType = mat.type;
-    texIdx = mat.textureIdx;
-    emission = vec3(mat.emissionR, mat.emissionG, mat.emissionB);
-    emissionStrength = mat.emissionStrength;
-    normalMapIdx = mat.normalMapIdx;
-    ior = mat.ior;
+    hit.diffuse = mat.diffuse;
+    hit.specular = mat.specular;
+    hit.kd = mat.kd;
+    hit.ks = mat.ks;
+    hit.shininess = mat.shininess;
+    hit.materialType = mat.type;
+    hit.textureIdx = mat.textureIdx;
+    hit.emission = vec3(mat.emissionR, mat.emissionG, mat.emissionB);
+    hit.emissionStrength = mat.emissionStrength;
+    hit.normalMapIdx = mat.normalMapIdx;
+    hit.ior = mat.ior;
+
 
     return true;
 }
-
-// ---------
-// AABB Intersection
-// ---------
 
 bool intersectAABB(vec3 ro, vec3 invRd, vec3 aabbMin, vec3 aabbMax, float tMin, float tMax) {
     vec3 t0 = (aabbMin - ro) * invRd;
@@ -391,52 +426,63 @@ bool intersectAABB(vec3 ro, vec3 invRd, vec3 aabbMin, vec3 aabbMax, float tMin, 
     return tmin <= tmax;
 }
 
-// -------
-// OMBRE
-// -------
 
-bool traceShadow(vec3 ro, vec3 rd, float maxDist)
-{
-    for (int i = 0; i < u_sphereCount; ++i)
-    {
-        float t;
-        if (intersectSphere(ro, rd, spheres[i].centerRadius, t)) {
-            if (t < maxDist) {
-                if (spheres[i].Material_type == 2) continue;
-                return true;
-            }
+// test ombre
+bool traceShadow(vec3 ro, vec3 rd, float maxDist) {
+
+
+    // Spheres
+    for (int i = 0; i < u_sphereCount; ++i) {
+        vec4 cR = spheres[i].centerRadius;
+        vec3 oc = ro - cR.xyz;
+        float r = cR.w;
+        float b = dot(oc, rd);
+        float c = dot(oc, oc) - r*r;
+        float disc = b*b - c;
+        
+        if (disc < 0.0) continue;
+        float sq = sqrt(disc);
+        float t1 = -b - sq;
+        float t2 = -b + sq;
+        float t = (t1 > 1e-4) ? t1 : ((t2 > 1e-4) ? t2 : -1.0);
+        
+        if (t > 0.0 && t < maxDist) {
+            if (spheres[i].materialType == 2) continue;
+            return true;
         }
     }
 
-    for (int i = 0; i < u_squareCount; ++i)
-    {
+    // Squares
+    for (int i = 0; i < u_squareCount; ++i) {
         vec3 A = squares[i].a.xyz;
         vec3 B = squares[i].b.xyz;
         vec3 D = squares[i].d.xyz;
         vec3 N = normalize(cross(B - A, D - A));
         float denom = dot(N, rd);
-        if (abs(denom) > 1e-6) {
-            float t = dot(A - ro, N) / denom;
-            if (t > 1e-4 && t < maxDist) {
-                vec3 P = ro + rd * t;
-                vec3 C = squares[i].c.xyz;
-                
-                bool hit = false;
-                if (dot(cross(B - A, P - A), N) >= 0.0 &&
-                    dot(cross(C - B, P - B), N) >= 0.0 &&
-                    dot(cross(A - C, P - C), N) >= 0.0) hit = true;
-                else if (dot(cross(C - A, P - A), N) >= 0.0 &&
-                         dot(cross(D - C, P - C), N) >= 0.0 &&
-                         dot(cross(A - D, P - D), N) >= 0.0) hit = true;
+        
+        if (abs(denom) < 1e-6) continue;
 
-                if (hit) {
-                    if (squares[i].Material_type == 2) continue;
-                    return true;
-                }
-            }
+        float t = dot(A - ro, N) / denom;
+        if (t <= 1e-4 || t >= maxDist) continue;
+
+        vec3 P = ro + rd * t;
+        vec3 C = squares[i].c.xyz;
+        
+        bool hit = false;
+        if (dot(cross(B - A, P - A), N) >= 0.0 &&
+            dot(cross(C - B, P - B), N) >= 0.0 &&
+            dot(cross(A - C, P - C), N) >= 0.0) hit = true;
+        else if (dot(cross(C - A, P - A), N) >= 0.0 &&
+                 dot(cross(D - C, P - C), N) >= 0.0 &&
+                 dot(cross(A - D, P - D), N) >= 0.0) hit = true;
+
+        if (hit) {
+            if (squares[i].materialType == 2) continue;
+            return true;
         }
     }
 
+    // BVH
     if (u_triangleCount > 0) {
         vec3 invRd = 1.0 / rd;
         int stack[32];
@@ -467,20 +513,20 @@ bool traceShadow(vec3 ro, vec3 rd, float maxDist)
                     float det = dot(e1, pvec);
                     float detInv = 1.0/det;
 
-                    if (abs(det) > 1e-6) {
-                        vec3 tvec = ro - v0;
-                        float u = dot(tvec, pvec) * detInv;
-                        if (u >= 0.0 && u <= 1.0) {
-                            vec3 qvec = cross(tvec, e1);
-                            float v = dot(rd, qvec) * detInv;
-                            if (v >= 0.0 && u + v <= 1.0) {
-                                float t = dot(e2, qvec) * detInv;
-                                if (t > 1e-4 && t < maxDist) {
-                                    if (materials[tri.matIdx].type == 2) continue;
-                                    return true;
-                                }
-                            }
-                        }
+                    if (abs(det) < 1e-6) continue;
+
+                    vec3 tvec = ro - v0;
+                    float u = dot(tvec, pvec) * detInv;
+                    if (u < 0.0 || u > 1.0) continue;
+
+                    vec3 qvec = cross(tvec, e1);
+                    float v = dot(rd, qvec) * detInv;
+                    if (v < 0.0 || u + v > 1.0) continue;
+
+                    float t = dot(e2, qvec) * detInv;
+                    if (t > 1e-4 && t < maxDist) {
+                        if (materials[tri.matIdx].type == 2) continue;
+                        return true;
                     }
                 }
             } else {
@@ -495,9 +541,7 @@ bool traceShadow(vec3 ro, vec3 rd, float maxDist)
     return false;
 }
 
-// ---------
-// TRACE
-// ---------
+// test inter
 
 bool trace(vec3 ro, vec3 rd, out Hit hit)
 {
@@ -510,70 +554,16 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
     // Spheres
     for (int i = 0; i < u_sphereCount; ++i)
     {
-        float t;
-        if (intersectSphere(ro, rd, spheres[i].centerRadius, t)) {
-            if (t < hit.t) {
-                hit.t = t;
-                hit.pos = ro + rd * t;
-                hit.normal = normalize(hit.pos - spheres[i].centerRadius.xyz);
-
-                hit.diffuse = spheres[i].diffuse;
-                hit.kd = spheres[i].kd;
-                hit.specular = spheres[i].specular;
-                hit.ks = spheres[i].ks;
-                hit.shininess = spheres[i].shininess;
-                hit.Material_type = spheres[i].Material_type;
-                hit.textureIdx = spheres[i].textureIdx;
-                hit.normalMapIdx = spheres[i].normalMapIdx;
-                hit.emission = vec3(spheres[i].emissionR, spheres[i].emissionG, spheres[i].emissionB);
-                hit.emissionStrength = spheres[i].emissionStrength;
-                hit.ior = spheres[i].ior;
-
-                vec3 N = hit.normal;
-                float u = 0.5 + atan(N.z, N.x) / (2.0 * 3.14159265);
-                float v = 0.5 + asin(N.y) / 3.14159265;
-                hit.uv = vec2(u, v);
-                
-                hit.tangent = normalize(vec3(-N.z, 0.0, N.x));
-                if (length(hit.tangent) < 0.001) hit.tangent = vec3(1,0,0);
-
-                found = true;
-            }
+        if (intersectSphere(ro, rd, i, hit)) {
+            found = true;
         }
-
     }
 
     // Squares
     for (int i = 0; i < u_squareCount; ++i)
     {
-        float t; vec3 n; vec3 diffuse;
-        float kd; float ks; float shininess;
-        vec3 specular;
-        int matType; vec2 uv; int texIdx;
-        vec3 emission; float emissionStrength;
-        vec3 tangent; int normalMapIdx; float ior;
-
-        if (intersectQuad(ro, rd, squares[i], t, n, diffuse,specular,kd,ks,shininess, matType, uv, texIdx, emission, emissionStrength, tangent, normalMapIdx, ior))
-        {
-            if (t < hit.t) {
-                hit.t = t;
-                hit.pos = ro + rd * t;
-                hit.normal = n;
-                hit.diffuse = diffuse;
-                hit.specular=specular;
-                hit.kd=kd;
-                hit.ks=ks;
-                hit.shininess=shininess;
-                hit.Material_type = matType;
-                hit.textureIdx = texIdx;
-                hit.normalMapIdx = normalMapIdx;
-                hit.uv = uv;
-                hit.emission = emission;
-                hit.emissionStrength = emissionStrength;
-                hit.ior = ior;
-                hit.tangent = tangent;
-                found = true;
-            }
+        if (intersectQuad(ro, rd, i, hit)) {
+            found = true;
         }
     }
 
@@ -596,34 +586,8 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
             if (node.triangleCount > 0) {
                 for (int i = 0; i < node.triangleCount; ++i) {
                     int triIdx = node.rightChildOrPrim + i;
-                    float t; vec3 n; vec3 diffuse;
-                    float kd; float ks; float shininess;
-                    vec3 specular;
-                    int matType;
-                    vec2 uv; int texIdx;
-                    vec3 emission; float emissionStrength;
-                    vec3 tangent; int normalMapIdx; float ior;
-
-                    if (intersectTri(ro, rd, triangles[triIdx], t, n, diffuse, specular, kd, ks, shininess, matType, uv, texIdx, emission, emissionStrength, tangent, normalMapIdx, ior)) {
-                        if (t < hit.t) {
-                            hit.t = t;
-                            hit.pos = ro + rd * t;
-                            hit.normal = n;
-                            hit.diffuse = diffuse;
-                            hit.kd = kd;
-                            hit.specular = specular;
-                            hit.ks = ks;
-                            hit.shininess = shininess;
-                            hit.Material_type = matType;
-                            hit.uv = uv;
-                            hit.textureIdx = texIdx;
-                            hit.normalMapIdx = normalMapIdx;
-                            hit.emission = emission;
-                            hit.emissionStrength = emissionStrength;
-                            hit.ior = ior;
-                            hit.tangent = tangent;
-                            found = true;
-                        }
+                    if (intersectTri(ro, rd, triIdx, hit)) {
+                        found = true;
                     }
                 }
             } else {
@@ -639,9 +603,7 @@ bool trace(vec3 ro, vec3 rd, out Hit hit)
     return found;
 }
 
-// ------
-// MATERIALS
-// ------
+//mat
 
 void mirror(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput) {
     rd = reflect(rd, h.normal);
@@ -683,27 +645,23 @@ void glass(in Hit h, inout vec3 ro, inout vec3 rd, inout vec3 throughput, inout 
     throughput *= vec3(1.0);
 }
 
-// ------
-// MAIN 
-// ------
 
-void main()
-{
-    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
-    if (px.x >= u_width || px.y >= u_height) return;
+//MAIN
 
-    uint seed = uint(px.x) + uint(px.y) * 1664525u + uint(u_frameIndex) * 1013904223u;
+void main() {
+    ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+    if (pixelCoords.x >= u_width || pixelCoords.y >= u_height) return;
+
+    uint seed = uint(pixelCoords.x) + uint(pixelCoords.y) * 1664525u + uint(u_frameIndex) * 1013904223u;
     vec3 finalRadiance = vec3(0.0);
 
-    for (int s = 0; s < u_spp; s++)
-    {
-        uint sseed = hash_u(seed + uint(s));
-        float jx = randf(sseed);
-        float jy = randf(sseed);
+    for (int s = 0; s < u_nbRay; s++) {
+        uint raySeed = hash_u(seed + uint(s));
+        
+        vec2 jitter = vec2(randf(raySeed), randf(raySeed));
+        vec2 uv = ((vec2(pixelCoords) + jitter) / vec2(u_width, u_height)) * 2.0 - 1.0;
 
-        vec2 uv = ((vec2(px) + vec2(jx, jy)) / vec2(u_width, u_height)) * 2.0 - 1.0;
-
-        float fov = radians(u_fovDeg);
+        float fov = radians(60.0f);
         float aspect = float(u_width) / float(u_height);
         float sx = uv.x * aspect * tan(fov * 0.5);
         float sy = uv.y * tan(fov * 0.5);
@@ -713,137 +671,95 @@ void main()
 
         if (u_enableDoF != 0 && u_lensRadius > 1e-6) {
             vec3 focalPoint = ro + rd * u_focalDistance;
-
-            float r1 = randf(sseed);
-            float r2 = randf(sseed);
-            vec2 lensSample = concentricSampleDisk(vec2(r1, r2)) * u_lensRadius;
-
-            vec3 newRo = u_camPos + u_camRight * lensSample.x + u_camUp * lensSample.y;
-            vec3 newRd = normalize(focalPoint - newRo);
-
-            ro = newRo;
-            rd = newRd;
+            vec2 lensSample = sampleDisk(vec2(randf(raySeed), randf(raySeed))) * u_lensRadius;
+            
+            ro += u_camRight * lensSample.x + u_camUp * lensSample.y;
+            rd = normalize(focalPoint - ro);
         }
 
         vec3 throughput = vec3(1.0);
         vec3 radiance = vec3(0.0);
-        const int MAX_BOUNCES = u_maxBounces;
 
-        for (int bounce = 0; bounce < MAX_BOUNCES; bounce++)
-        {
-            Hit h;
-
-            if (!trace(ro, rd, h))
-            {
+        for (int bounce = 0; bounce < u_maxBounces; bounce++) {
+            Hit hit;
+            if (!trace(ro, rd, hit)) {
                 radiance += throughput * u_bgColor;
-
-                if (bounce == 0) {
-                    imageStore(imgGbuffer, px, vec4(0,0,0, 1000.0));
-                }
+                if (bounce == 0) imageStore(imgGbuffer, pixelCoords, vec4(0, 0, 0, 1000.0));
                 break;
             }
 
-            // Normal Mapping
-            if (h.normalMapIdx >= 0) {
-                uint64_t handle = handles[h.normalMapIdx];
-                sampler2D s = sampler2D(handle);
-                vec3 mapN = texture(s, h.uv).rgb;
-                mapN = mapN * 2.0 - 1.0;
-                
-                vec3 T = normalize(h.tangent - h.normal * dot(h.normal, h.tangent));
-                vec3 B = cross(h.normal, T);
-                mat3 TBN = mat3(T, B, h.normal);
-                
-                h.normal = normalize(TBN * mapN);
-            }
-
-            // Emission
-            radiance += throughput * h.emission * h.emissionStrength;
-
             if (bounce == 0) {
-                imageStore(imgGbuffer, px, vec4(h.normal, h.t));
+                imageStore(imgGbuffer, pixelCoords, vec4(hit.normal, hit.t));
             }
 
-            // --- Miroir ---
-            if (h.Material_type == 1) {
-                mirror(h, ro, rd, throughput);
+            if (hit.normalMapIdx >= 0) {
+                vec3 mapN = texture(sampler2D(handles[hit.normalMapIdx]), hit.uv).rgb * 2.0 - 1.0;
+                vec3 T = normalize(hit.tangent - hit.normal * dot(hit.normal, hit.tangent));
+                vec3 B = cross(hit.normal, T);
+                hit.normal = normalize(mat3(T, B, hit.normal) * mapN);
+            }
+
+            radiance += throughput * hit.emission * hit.emissionStrength;
+
+            if (hit.materialType == 1) { // mirroire
+                mirror(hit, ro, rd, throughput);
                 continue;
             }
-
-            // --- Verre ---
-            if (h.Material_type == 2) {
-                glass(h, ro, rd, throughput, sseed);
+            if (hit.materialType == 2) { // verre
+                glass(hit, ro, rd, throughput, raySeed);
                 continue;
             }
 
             vec3 V = normalize(-rd);
-            
-            vec3 albedo = h.diffuse;
-            if (h.textureIdx >= 0) {
-                uint64_t handle = handles[h.textureIdx];
-                sampler2D s = sampler2D(handle);
-                albedo = texture(s, h.uv).rgb;
+            vec3 albedo = hit.diffuse;
+            if (hit.textureIdx >= 0) {
+                albedo = texture(sampler2D(handles[hit.textureIdx]), hit.uv).rgb;
             }
 
             vec3 directLight = vec3(0.0);
+            for (int i = 0; i < u_lightCount; i++) {
+                Light light = lights[i];
+                vec3 Lpos = light.posIntensity.xyz;
+                float intensity = light.posIntensity.w;
+                
+                vec3 accumShadow = vec3(0.0);
+                for (int sh = 0; sh < u_shadowSamples; sh++) {
+                    vec2 rnd = vec2(randf(seed), randf(seed));
+                    vec2 diskPoint = sampleDisk(rnd) * light.lightRadius;
+                    vec3 lightPoint = Lpos + vec3(diskPoint.x, 0.0, diskPoint.y);
 
-            for (int li = 0; li < u_lightCount; li++)
-            {
-                vec3 Lpos = lights[li].posIntensity.xyz;
-                float intensity = lights[li].posIntensity.w;
-                vec3 lightColor = lights[li].color.rgb;
-                float lightRadius = lights[li].lightRadius;
+                    vec3 toLight = lightPoint - hit.pos;
+                    float dist = length(toLight);
+                    vec3 L = toLight / dist;
 
-                vec3 accumContribution = vec3(0.0);
-
-                for (int s = 0; s < u_shadowSamples; s++)
-                {
-                    vec3 rnd = sampleUniformSphere(seed);
-                    vec3 lightPoint = Lpos + rnd * lightRadius;
-
-                    vec3 toLight = lightPoint - h.pos;
-                    float distSample = length(toLight);
-                    vec3 Ls = toLight / distSample;
-
-                    bool hitSomething = traceShadow(h.pos + h.normal * 1e-3, Ls, distSample - 1e-3);
-                    bool visible = !hitSomething;
-
-                    if (visible)
-                    {
-                        float attenuation = 1.0 / (distSample * distSample);
-                        float diff = max(dot(h.normal, Ls), 0.0);
-                        vec3 diffuseTerm = h.kd * albedo * diff;
-
-                        vec3 R = reflect(-Ls, h.normal);
-                        float spec = pow(max(dot(R, V), 0.0), h.shininess);
-                        vec3 specTerm = h.ks * h.specular * spec;
-
-                        accumContribution += (diffuseTerm + specTerm) * lightColor * intensity * attenuation;
+                    if (!traceShadow(hit.pos + hit.normal * 1e-3, L, dist - 1e-3)) {
+                        float atten = 1.0 / (dist * dist);
+                        float diff = max(dot(hit.normal, L), 0.0);
+                        
+                        vec3 R = reflect(-L, hit.normal);
+                        float spec = pow(max(dot(R, V), 0.0), hit.shininess);
+                        
+                        accumShadow += (hit.kd * albedo * diff + hit.ks * hit.specular * spec) 
+                                     * light.color.rgb * intensity * atten;
                     }
                 }
-
-                directLight += accumContribution / float(u_shadowSamples);
+                directLight += accumShadow / float(u_shadowSamples);
             }
 
             radiance += throughput * directLight;
             throughput *= albedo;
 
-            if (bounce > 2)
-            {
+            if (bounce > 2) {
                 float p = clamp(max(max(throughput.r, throughput.g), throughput.b), 0.05, 0.95);
-                if (randf(sseed) > p) break;
+                if (randf(raySeed) > p) break;
                 throughput /= p;
             }
 
-            ro = h.pos + h.normal * 1e-3;
-            rd = randomHemisphere(h.normal, sseed);
+            ro = hit.pos + hit.normal * 1e-3;
+            rd = randomHemisphere(hit.normal, raySeed);
         }
-
         finalRadiance += radiance;
     }
 
-    finalRadiance /= float(u_spp);
-    // finalRadiance = min(finalRadiance, vec3(2.0)); // Removed aggressive clamping
-
-    imageStore(imgAccum, px, vec4(finalRadiance, 1.0));
+    imageStore(imgAccum, pixelCoords, vec4(finalRadiance / float(u_nbRay), 1.0));
 }

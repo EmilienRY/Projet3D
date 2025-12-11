@@ -140,7 +140,7 @@ int BVH::convGPU(int nodeIdx) {
     m_gpuNodes[gpuNodeIdx].maxY = node.aabb.max.y();
     m_gpuNodes[gpuNodeIdx].maxZ = node.aabb.max.z();
 
-    if (node.isLeaf()) // Dans ce cas la rightChildOrPrim a indice du premier triangle
+    if (node.isLeaf()) // Dans ce cas la rightChildOrPrim a indice prem triangle
     {
         m_gpuNodes[gpuNodeIdx].triangleCount = node.triangleCount;
         m_gpuNodes[gpuNodeIdx].rightChildOrPrim = node.firstTriangleIndex;

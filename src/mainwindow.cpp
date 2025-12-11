@@ -1,6 +1,9 @@
 #include "mainwindow.h"
 #include "renderer/openglwindow.h"
-
+#include "scene/scene.h"
+#include "scene/mesh.h"
+#include "scene/light.h"
+#include <QSignalBlocker>
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
@@ -26,6 +29,12 @@ mainWindow::mainWindow(QWidget *parent)
     QWidget *glWidget = QWidget::createWindowContainer(m_glWindow, this);
     setCentralWidget(glWidget);
 
+    setupMenus();
+    setupDock();
+}
+
+void mainWindow::setupMenus()
+{
     QMenu *menuFile = menuBar()->addMenu("Fichier");
     QAction *loadOFF = new QAction("Charger Mesh (.off)", this);
     QAction *loadOBJ = new QAction("Charger Mesh (.obj)", this);
@@ -46,7 +55,10 @@ mainWindow::mainWindow(QWidget *parent)
     QAction *addLight = new QAction("Ajouter une lumière", this);
     menuLight->addAction(addLight);
     connect(addLight, &QAction::triggered, this, &mainWindow::addLight);
+}
 
+void mainWindow::setupDock()
+{
     QDockWidget *dock = new QDockWidget("Controle de la scène", this);
     dock->setAllowedAreas(Qt::RightDockWidgetArea);
     dock->setFixedWidth(450);
@@ -57,6 +69,20 @@ mainWindow::mainWindow(QWidget *parent)
     QWidget *dockContent = new QWidget();
     QVBoxLayout *mainLayout = new QVBoxLayout(dockContent);
 
+    mainLayout->addWidget(createMeshGroup());
+    mainLayout->addWidget(createMaterialGroup());
+    mainLayout->addWidget(createLightGroup());
+    mainLayout->addWidget(createGlobalGroup());
+
+    mainLayout->addStretch();
+
+    scrollArea->setWidget(dockContent);
+    dock->setWidget(scrollArea);
+    addDockWidget(Qt::RightDockWidgetArea, dock);
+}
+
+QGroupBox* mainWindow::createMeshGroup()
+{
     QGroupBox *meshGroup = new QGroupBox("Objets / Meshes");
     meshGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }");
     QFormLayout *meshLayout = new QFormLayout();
@@ -148,15 +174,27 @@ mainWindow::mainWindow(QWidget *parent)
         scaleLabel->setText(QString("Scale : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
-    meshGroup->setLayout(meshLayout);
-    mainLayout->addWidget(meshGroup);
-
     connect(m_glWindow, &OpenGLWindow::selectedMeshChanged,
             this, &mainWindow::onMeshSelected);
 
     connect(m_glWindow, &OpenGLWindow::selectedLightChanged,
             this, &mainWindow::onLighthSelected);
 
+    connect(xSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setAxeX);
+    connect(ySlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setAxeY);
+    connect(zSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setAxeZ);
+
+    connect(rotationXslider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRotationX);
+    connect(rotationYslider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRotationY);
+    connect(rotationZslider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRotationZ);
+    connect(scaleSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setScale);
+
+    meshGroup->setLayout(meshLayout);
+    return meshGroup;
+}
+
+QGroupBox* mainWindow::createMaterialGroup()
+{
     QGroupBox *matGroup = new QGroupBox("Matériaux");
     matGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }");
     QFormLayout *matLayout = new QFormLayout();
@@ -315,9 +353,16 @@ mainWindow::mainWindow(QWidget *parent)
     connect(typeMat, &QComboBox::currentIndexChanged,
             m_glWindow, &OpenGLWindow::setSelectedTypeMat);
 
-    matGroup->setLayout(matLayout);
-    mainLayout->addWidget(matGroup);
+    connect(ksSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setKs);
+    connect(kdSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setKd);
+    connect(shininessSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setShininess);
 
+    matGroup->setLayout(matLayout);
+    return matGroup;
+}
+
+QGroupBox* mainWindow::createLightGroup()
+{
     QGroupBox *lightGroup = new QGroupBox("Lumières");
     lightGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }");
     QFormLayout *lightLayout = new QFormLayout();
@@ -411,9 +456,18 @@ mainWindow::mainWindow(QWidget *parent)
         radiusLabel->setText(QString("Rayon lumière : %1").arg(QString::number(value/10.0, 'f', 1)));
     });
 
-    lightGroup->setLayout(lightLayout);
-    mainLayout->addWidget(lightGroup);
+    connect(xLightSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setLightX);
+    connect(yLightSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setLightY);
+    connect(zLightSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setLightZ);
+    connect(lightIntensitySlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setIntensity);
+    connect(lighRadiusSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRadius);
 
+    lightGroup->setLayout(lightLayout);
+    return lightGroup;
+}
+
+QGroupBox* mainWindow::createGlobalGroup()
+{
     QGroupBox *globalGroup = new QGroupBox("Global");
     globalGroup->setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #555; border-radius: 5px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }");
     QFormLayout *globalLayout = new QFormLayout();
@@ -422,7 +476,6 @@ mainWindow::mainWindow(QWidget *parent)
     globalLayout->addRow("FPS :", fpsLabel);
     connect(m_glWindow, &OpenGLWindow::fpsChanged, this, &mainWindow::updateFps);
 
-    // Max rebond
     QSlider *maxBouncesSlider = new QSlider(Qt::Horizontal);
     maxBouncesSlider->setRange(0, 20);
     maxBouncesSlider->setValue(4);
@@ -433,10 +486,10 @@ mainWindow::mainWindow(QWidget *parent)
     });
     connect(maxBouncesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setMaxBounces);
 
-    // nb ray ombre
     QSlider *shadowSamplesSlider = new QSlider(Qt::Horizontal);
     shadowSamplesSlider->setRange(1, 32);
     shadowSamplesSlider->setValue(1);
+
     QLabel *shadowSamplesLabel = new QLabel(QString("Rayons d'ombres : %1").arg(shadowSamplesSlider->value()));
     globalLayout->addRow(shadowSamplesLabel, shadowSamplesSlider);
     connect(shadowSamplesSlider, &QSlider::valueChanged, this, [shadowSamplesLabel](int value){
@@ -444,7 +497,6 @@ mainWindow::mainWindow(QWidget *parent)
     });
     connect(shadowSamplesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setShadowSamples);
 
-    // nb rayons par pixels
     QSlider *sppSlider = new QSlider(Qt::Horizontal);
     sppSlider->setRange(1, 16);
     sppSlider->setValue(1);
@@ -453,16 +505,16 @@ mainWindow::mainWindow(QWidget *parent)
     connect(sppSlider, &QSlider::valueChanged, this, [sppLabel](int value){
         sppLabel->setText(QString("Rayons par pixels : %1").arg(value));
     });
-    connect(sppSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setSpp);
+    connect(sppSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setNbRay);
 
-    // Denoise Mode
+
     QComboBox *denoiseModeCombo = new QComboBox();
     denoiseModeCombo->addItem("Accumulation + Débruitage");
     denoiseModeCombo->addItem("Accumulation");
     globalLayout->addRow("Mode de débruitage :", denoiseModeCombo);
     connect(denoiseModeCombo, &QComboBox::currentIndexChanged, m_glWindow, &OpenGLWindow::setDenoiseMode);
 
-    // Denoise Strength
+
     QSlider *denoiseStrengthSlider = new QSlider(Qt::Horizontal);
     denoiseStrengthSlider->setRange(1, 20);
     denoiseStrengthSlider->setValue(5); 
@@ -473,7 +525,6 @@ mainWindow::mainWindow(QWidget *parent)
     });
     connect(denoiseStrengthSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setDenoiseStrength);
 
-    // Denoise Passes
     QSlider *denoisePassesSlider = new QSlider(Qt::Horizontal);
     denoisePassesSlider->setRange(1, 5);
     denoisePassesSlider->setValue(3);
@@ -484,7 +535,7 @@ mainWindow::mainWindow(QWidget *parent)
     });
     connect(denoisePassesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setDenoisePasses);
 
-    // Background Color
+
     QPushButton *btnBgColor = new QPushButton("Changer couleur fond");
     globalLayout->addRow("Couleur de fond :", btnBgColor);
 
@@ -542,38 +593,10 @@ mainWindow::mainWindow(QWidget *parent)
 
     QPushButton *resetBtn = new QPushButton("Reset scene");
     globalLayout->addRow(resetBtn);
+    connect(resetBtn, &QPushButton::clicked, this, &mainWindow::on_resetButton_clicked);
 
     globalGroup->setLayout(globalLayout);
-    mainLayout->addWidget(globalGroup);
-
-    mainLayout->addStretch();
-
-    scrollArea->setWidget(dockContent);
-    dock->setWidget(scrollArea);
-    addDockWidget(Qt::RightDockWidgetArea, dock);
-
-    connect(xSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setAxeX);
-    connect(ySlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setAxeY);
-    connect(zSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setAxeZ);
-
-    connect(rotationXslider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRotationX);
-    connect(rotationYslider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRotationY);
-    connect(rotationZslider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRotationZ);
-
-    connect(ksSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setKs);
-    connect(kdSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setKd);
-
-    connect(scaleSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setScale);
-    connect(shininessSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setShininess);
-
-
-    connect(xLightSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setLightX);
-    connect(yLightSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setLightY);
-    connect(zLightSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setLightZ);
-    connect(lightIntensitySlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setIntensity);
-    connect(lighRadiusSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setRadius);
-
-    connect(resetBtn, &QPushButton::clicked, this, &mainWindow::on_resetButton_clicked);
+    return globalGroup;
 }
 
 void mainWindow::openOffMesh()

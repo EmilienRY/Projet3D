@@ -4,7 +4,7 @@
 #include <QComboBox>
 #include <QLabel>
 #include "scene/material.h"
-
+#include <QGroupBox>
 class OpenGLWindow;
 
 class mainWindow : public QMainWindow
@@ -32,6 +32,13 @@ private:
     QComboBox *typeMat;
     QComboBox *lightSelector;
     void on_resetButton_clicked();
+
+    void setupMenus();
+    void setupDock();
+    QGroupBox* createMeshGroup();
+    QGroupBox* createMaterialGroup();
+    QGroupBox* createLightGroup();
+    QGroupBox* createGlobalGroup();
 
     QSlider *xSlider;
     QSlider *ySlider;

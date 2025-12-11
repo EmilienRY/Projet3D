@@ -49,7 +49,7 @@ public:
     void setRadius(int value);
     void setMaxBounces(int value);
     void setShadowSamples(int value);
-    void setSpp(int value);
+    void setNbRay(int value);
     void setDenoiseMode(int mode);
     void setDenoiseStrength(int value);
     void setDenoisePasses(int value);
@@ -153,7 +153,7 @@ private:
     int m_accumFrame = 0;
     int m_maxBounces = 4;
     int m_shadowSamples = 1;
-    int m_spp = 1;
+    int m_nbRay = 1;
     int m_denoiseMode = 0;
     float m_denoiseStrength = 0.5f;
     int m_denoisePasses = 3;
