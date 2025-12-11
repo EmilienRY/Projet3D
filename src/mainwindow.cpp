@@ -472,6 +472,24 @@ mainWindow::mainWindow(QWidget *parent)
     });
     connect(denoisePassesSlider, &QSlider::valueChanged, m_glWindow, &OpenGLWindow::setDenoisePasses);
 
+    // Background Color
+    QPushButton *btnBgColor = new QPushButton("Changer Couleur Fond");
+    globalLayout->addRow("Couleur de fond :", btnBgColor);
+
+    connect(btnBgColor, &QPushButton::clicked, this, [this]() {
+        QColorDialog *dialog = new QColorDialog(this);
+        dialog->setOption(QColorDialog::DontUseNativeDialog, true);
+        dialog->setWindowTitle("Choisir une couleur de fond");
+        dialog->setCurrentColor(QColor(51, 76, 178)); 
+
+        connect(dialog, &QColorDialog::colorSelected,
+                this, [this](const QColor &c) {
+                    m_glWindow->setBackgroundColor(c);
+                });
+
+        dialog->open();
+    });
+
     QCheckBox *dofCheckbox = new QCheckBox("Enable Depth of Field");
     dofCheckbox->setChecked(false);
     globalLayout->addRow(dofCheckbox);

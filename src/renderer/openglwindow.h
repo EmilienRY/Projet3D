@@ -56,6 +56,7 @@ public:
     void setLensRadius(float value);
     void setFocalDistance(float value);
     void setDoFEnabled(bool enabled);
+    void setBackgroundColor(QColor color);
 
     Scene* scene() { return m_scene; }
     void setSelectedMesh(int index);
@@ -97,6 +98,7 @@ private:
 
     std::vector<GLuint64> m_textureHandles;
     QMap<QString, int> m_textureMap;
+    QVector3D m_bgColor;
     
     void doRayTrace();
     void doRaster();

@@ -20,6 +20,7 @@ OpenGLWindow::OpenGLWindow(QWindow *parent)
     m_lensRadius = 0.0f;
     m_focalDistance = 5.0f;
     m_enableDoF = false;
+    m_bgColor = QVector3D(0.2f, 0.3f, 0.7f);
 }
 
 OpenGLWindow::~OpenGLWindow()
@@ -497,6 +498,7 @@ void OpenGLWindow::doRayTrace()
     m_computeProgram->setUniformValue("u_width",        width());
     m_computeProgram->setUniformValue("u_height",       height());
     m_computeProgram->setUniformValue("u_frameIndex",   m_accumFrame);
+    m_computeProgram->setUniformValue("u_bgColor",      m_bgColor);
     m_computeProgram->setUniformValue("u_triangleCount",  m_gpuTriangleCount);
     m_computeProgram->setUniformValue("u_meshCount",  m_gpuMeshCount);
     m_computeProgram->setUniformValue("u_maxBounces",  m_maxBounces);
@@ -1621,6 +1623,13 @@ void OpenGLWindow::setNormalMap(QString path)
     resetAccumulation();
     update();
     uploadSceneToGPU();
+}
+
+void OpenGLWindow::setBackgroundColor(QColor color)
+{
+    m_bgColor = QVector3D(color.redF(), color.greenF(), color.blueF());
+    resetAccumulation();
+    update();
 }
 
 

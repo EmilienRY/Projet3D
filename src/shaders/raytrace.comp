@@ -109,6 +109,7 @@ layout(location = 15) uniform int u_shadowSamples;
 layout(location = 16) uniform float u_lensRadius;
 layout(location = 17) uniform float u_focalDistance;
 layout(location = 18) uniform int u_enableDoF;
+layout(location = 19) uniform vec3 u_bgColor;
 
 // -------
 // ALEA
@@ -724,7 +725,7 @@ void main()
 
             if (!trace(ro, rd, h))
             {
-                radiance += throughput * vec3(0.2, 0.3, 0.7);
+                radiance += throughput * u_bgColor;
 
                 if (bounce == 0) {
                     imageStore(imgGbuffer, px, vec4(0,0,0, 1000.0));
