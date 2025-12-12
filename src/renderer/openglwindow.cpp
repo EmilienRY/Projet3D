@@ -952,20 +952,26 @@ void OpenGLWindow::openOBJmesh(const QString filename, const QVector<Mesh::Verte
     mesh->modelMatrix.setToIdentity();
     mesh->addMaterial(mat);
 
-    int countName = 0;
-
-    m_scene->addMesh(mesh);
-
-    for (int i = 0; i < m_scene->meshes().size(); ++i) {
-        if (meshName == m_scene->meshes()[i]->name){
-            countName++;
+    QString baseName = meshName;
+    int counter = 1;
+    
+    bool nameExists = true;
+    while (nameExists) {
+        nameExists = false;
+        for (int i = 0; i < m_scene->meshes().size(); ++i) {
+            if (m_scene->meshes()[i]->name == meshName) {
+                nameExists = true;
+                break;
+            }
+        }
+        if (nameExists) {
+            counter++;
+            meshName = baseName + QString::number(counter);
         }
     }
-
-    if (countName > 0){
-        meshName.insert(meshName.size(), QString::number(countName+1));
-    }
     mesh->name = meshName;
+
+    m_scene->addMesh(mesh);
 
     uploadSceneToGPU();
     resetAccumulation();
@@ -1406,17 +1412,23 @@ void OpenGLWindow::addSphere(QVector<Mesh::Vertex> verts, QVector<unsigned int> 
     sphere->addMaterial(mat);
     sphere->isSphere=true;
 
-    QString meshName = "sphere";
-    int countName = 0;
-
-    for (int i = 0; i < m_scene->meshes().size(); ++i) {
-        if (meshName == m_scene->meshes()[i]->name){
-            countName++;
+    QString baseName = "sphere";
+    QString meshName = baseName;
+    int counter = 1;
+    
+    bool nameExists = true;
+    while (nameExists) {
+        nameExists = false;
+        for (int i = 0; i < m_scene->meshes().size(); ++i) {
+            if (m_scene->meshes()[i]->name == meshName) {
+                nameExists = true;
+                break;
+            }
         }
-    }
-
-    if (countName > 0){
-        meshName.insert(meshName.size(), QString::number(countName+1));
+        if (nameExists) {
+            counter++;
+            meshName = baseName + QString::number(counter);
+        }
     }
     sphere->name = meshName;
 
@@ -1439,17 +1451,23 @@ void OpenGLWindow::addPlane(QVector<Mesh::Vertex> verts, QVector<unsigned int> i
     plane->addMaterial(mat);
     plane->isSquare=true;
 
-    QString meshName = "plane";
-    int countName = 0;
+    QString baseName = "plane";
+    QString meshName = baseName;
+    int counter = 1;
     
-    for (int i = 0; i < m_scene->meshes().size(); ++i) {
-        if (meshName == m_scene->meshes()[i]->name){
-            countName++;
+    bool nameExists = true;
+    while (nameExists) {
+        nameExists = false;
+        for (int i = 0; i < m_scene->meshes().size(); ++i) {
+            if (m_scene->meshes()[i]->name == meshName) {
+                nameExists = true;
+                break;
+            }
         }
-    }
-
-    if (countName > 0){
-        meshName.insert(meshName.size(), QString::number(countName+1));
+        if (nameExists) {
+            counter++;
+            meshName = baseName + QString::number(counter);
+        }
     }
     plane->name = meshName;
 

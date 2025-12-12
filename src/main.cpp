@@ -8,6 +8,8 @@
 
 int main(int argc, char *argv[])
 {
+
+    //force GPU NVIDIA sur systems hybrid (pc portable ou carte graphique intel est utilisée par défaut)
     bool isPrimeSet = (qgetenv("__NV_PRIME_RENDER_OFFLOAD") == "1");
     bool isVendorSet = (qgetenv("__GLX_VENDOR_LIBRARY_NAME") == "nvidia");
 

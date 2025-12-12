@@ -524,7 +524,7 @@ QGroupBox* mainWindow::createGlobalGroup()
 
     QSlider *denoisePassesSlider = new QSlider(Qt::Horizontal);
     denoisePassesSlider->setRange(1, 5);
-    denoisePassesSlider->setValue(3);
+    denoisePassesSlider->setValue(2);
     QLabel *denoisePassesLabel = new QLabel(QString("Passes de débruitage : %1").arg(denoisePassesSlider->value()));
     globalLayout->addRow(denoisePassesLabel, denoisePassesSlider);
     connect(denoisePassesSlider, &QSlider::valueChanged, this, [denoisePassesLabel](int value){

@@ -157,7 +157,7 @@ private:
     int m_nbRay = 1;
     int m_denoiseMode = 0;
     float m_denoiseStrength = 0.5f;
-    int m_denoisePasses = 3;
+    int m_denoisePasses = 2;
 
     bool m_offLineMode = false;
 

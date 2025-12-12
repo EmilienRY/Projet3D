@@ -480,7 +480,6 @@ void Scene::loadObjFile(const QString &fileName,
             continue;
 
         if (tokens[0] == "v") {
-            // Vertex position
             if (tokens.size() < 4) continue;
             float x = tokens[1].toFloat();
             float y = tokens[2].toFloat();
@@ -488,7 +487,6 @@ void Scene::loadObjFile(const QString &fileName,
             positions.append(QVector3D(x, y, z));
         }
         else if (tokens[0] == "vn") {
-            // Vertex normal
             if (tokens.size() < 4) continue;
             float x = tokens[1].toFloat();
             float y = tokens[2].toFloat();
@@ -496,22 +494,20 @@ void Scene::loadObjFile(const QString &fileName,
             normals.append(QVector3D(x, y, z));
         }
         else if (tokens[0] == "vt") {
-            // Vertex UV
             if (tokens.size() < 3) continue;
             float u = tokens[1].toFloat();
             float v = tokens[2].toFloat();
             uvs.append(QVector2D(u, v));
         }
         else if (tokens[0] == "f") {
-            // Face
-            if (tokens.size() < 4) continue; // ignore non-triangles for now
+            if (tokens.size() < 4) continue;
             faceCount++;
 
             for (int i = 1; i <= 3; ++i) {
                 QStringList parts = tokens[i].split('/');
-                int vi = parts[0].toInt() - 1; // vertex index
-                int ti = parts.size() > 1 && !parts[1].isEmpty() ? parts[1].toInt() - 1 : -1; // uv index
-                int ni = parts.size() > 2 ? parts[2].toInt() - 1 : -1; // normal index
+                int vi = parts[0].toInt() - 1;
+                int ti = parts.size() > 1 && !parts[1].isEmpty() ? parts[1].toInt() - 1 : -1;
+                int ni = parts.size() > 2 ? parts[2].toInt() - 1 : -1;
 
                 Mesh::Vertex v;
                 v.pos = positions[vi];
